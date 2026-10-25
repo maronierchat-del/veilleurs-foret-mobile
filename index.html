@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#25291e" />
+  <title>Les Veilleurs de la Forêt</title>
+  <link rel="stylesheet" href="style.css" /><link rel="stylesheet" href="integration.css" /><link rel="stylesheet" href="construction-interface.css" /><link rel="stylesheet" href="inventaire.css" />
+</head>
+<body>
+  <svg width="0" height="0" aria-hidden="true" style="position:absolute;overflow:hidden"><defs><symbol id="energy-bolt" viewBox="0 0 16 20"><path d="M9 1 2 11h5l-1 8 8-11H9Z" /></symbol></defs></svg>
+  <canvas id="scene" aria-label="Carte de la première région. Déplacement avec ZQSD, WASD ou les flèches, ou les commandes tactiles."></canvas>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">✧</span><div><strong>Les Veilleurs de la Forêt</strong><small>Copie de test · maison du laboratoire</small></div></div>
+    <div class="balances">
+      <div class="balance sport-counter"><span>Sport</span><span class="energy-value"><strong id="sportBalance">0</strong><svg class="energy-symbol" aria-hidden="true" focusable="false"><use href="#energy-bolt" /></svg></span><button type="button" id="openSport" aria-label="Ajouter une activité sportive" title="Enregistrer une activité">＋</button></div>
+      <div class="balance"><span>Cuisine</span><span class="energy-value"><strong id="foodBalance">0</strong><svg class="energy-symbol" aria-hidden="true" focusable="false"><use href="#energy-bolt" /></svg></span></div>
+      <button class="topbtn" id="btnSave" title="Sauvegarder maintenant" hidden>↧ <span>Enregistrer</span></button>
+    </div>
+  </header>
+  <aside id="saveWarning" class="save-warning" role="alert" hidden><span id="saveWarningText"></span><button id="saveWarningExport" type="button">Exporter ma partie</button></aside>
+  <div class="trial-controls"><span>Maison 4 × 4 · essai à examiner</span><button id="trialTurn">Tourner la maison</button><button id="trialReturn">Revenir devant la porte</button><button id="floorOpen">Sols · essai de placement</button></div>
+  <div id="floorControls" class="floor-controls" hidden><strong>Sols · zone devant la maison</strong><span id="floorStatus" role="status">Marteau équipé requis. Matériaux non consommés dans cet essai.</span><div><button id="floorAdd">Poser</button><button id="floorRemove">Retirer</button><button id="floorClose">Terminer</button></div><button id="wallOpen">Murs et ouvertures →</button><button id="roofOpen">Toiture →</button></div>
+  <div id="wallControls" class="floor-controls" hidden><strong>Murs et ouvertures · grille</strong><label>Élément <select id="wallKind"><option value="mur">Mur</option><option value="fenetre">Fenêtre</option><option value="porte">Porte</option></select></label><button id="wallFlip" hidden>Gonds à gauche · changer</button><span id="wallStatus" role="status">Vise une arête de la grille, avec ou sans sol.</span><div><button id="wallAdd">Poser</button><button id="wallRemove">Retirer</button><button id="wallClose">Terminer</button></div><button id="wallFloors">← Revenir aux sols</button><button id="wallRoof">Toiture →</button></div>
+  <div id="roofControls" class="floor-controls" hidden><strong>Toiture · modules du laboratoire</strong><div id="roofShapes" role="group" aria-label="Forme de toiture"><button type="button" data-roof-kind="pan" aria-pressed="true" title="Pan · touche 1"><kbd>1</kbd> Pan</button><button type="button" data-roof-kind="angle" aria-pressed="false" title="Angle extérieur · touche 2"><kbd>2</kbd> Angle extérieur</button><button type="button" data-roof-kind="ridge" aria-pressed="false" title="Faîtage · touche 3"><kbd>3</kbd> Faîtage</button><button type="button" data-roof-kind="valley" aria-pressed="false" title="Angle rentrant · touche 4"><kbd>4</kbd> Angle rentrant</button></div><button id="roofTurn" title="R ou clic droit · Maj + R pour tourner en sens inverse">Tourner · 0°</button><small id="roofShortcuts">1–4 : forme · R / clic droit : tourner</small><strong id="roofStock">Éléments disponibles : 0</strong><span id="roofStatus" role="status">Vise le haut d’un mur ou le bord d’un toit.</span><button id="roofCraft">Fabriquer à l’établi</button><div><button id="roofAdd">Poser</button><button id="roofRemove">Retirer</button><button id="roofClose">Terminer</button></div><button id="roofFloors">← Sols et murs</button></div>
+  <div class="resource-strip" id="resourceStrip" aria-label="Ressources disponibles"></div>
+  <div class="scene-hint" id="sceneHint">Clique sur un élément pour interagir · ZQSD / WASD / flèches pour marcher</div>
+  <div id="cameraControls" class="camera-controls"><button id="cameraHand" aria-pressed="false" title="Activer puis glisser la carte au doigt ou à la souris">Main · carte</button><button id="cameraCenter" title="Recentrer la vue sans déplacer le personnage">Recentrer</button><small>Espace + glisser · bouton du milieu</small></div>
+  <div class="zoom-buttons"><button id="zoomMinus" title="Dézoomer">−</button><span id="zoomValue">100 %</span><button id="zoomPlus" title="Zoomer">+</button></div>
+  <div class="mobile-controls" id="mobileControls" aria-label="Commandes de déplacement tactiles">
+    <button class="pad-up" data-dir="up" aria-label="Haut">▲</button>
+    <button class="pad-left" data-dir="left" aria-label="Gauche">◀</button>
+    <button class="pad-down" data-dir="down" aria-label="Bas">▼</button>
+    <button class="pad-right" data-dir="right" aria-label="Droite">▶</button>
+  </div>
+  <div class="placement-help" id="placementHelp" hidden><span id="placementLabel">Place ton objet sur la carte</span><button type="button" id="cancelPlacement">Annuler le placement</button></div>
+  <div class="toolbelt" id="toolbelt" aria-label="Barre rapide : outils équipés depuis le sac"></div>
+  <div id="toolRecoveryControls" class="tool-recovery-controls" hidden><span id="toolRecoveryLabel" role="status"></span></div>
+  <nav class="dock" aria-label="Menus du jeu">
+    <button data-tab="inventory"><span aria-hidden="true"><img class="bag-icon" src="assets/propositions/inventaire-sac-transparent-v1.png" alt=""></span>Sac</button>
+    <button data-tab="craft"><span>⚒</span>Fabrication</button>
+    <button data-tab="construction"><span>⌂</span>Construire</button>
+    <button data-tab="settings"><span>⚙</span>Paramètres</button>
+  </nav>
+  <aside class="panel" id="panel" aria-label="Menu du jeu">
+    <div class="panel-top"><div><span class="eyebrow">JOURNAL DE BORD</span><h2 id="panelTitle">Énergie sportive</h2></div><button id="panelClose" aria-label="Fermer le panneau">×</button></div>
+    <div id="panelBody"></div>
+  </aside>
+  <div class="selection" id="selection" hidden></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="loading" id="loading">La vallée prend forme… <span id="loadProgress"></span></div>
+  <audio id="forestMusic" src="assets/audio/forest_ambience.mp3" loop preload="auto" aria-hidden="true"></audio>
+  <script src="hitmasks.js" defer></script>
+  <script src="construction/geometry.js" defer></script>
+  <script src="construction/plancher.js" defer></script>
+  <script src="construction/murs.js" defer></script>
+  <script src="construction/toit-model.js" defer></script>
+  <script src="construction/toit-render.js" defer></script>
+  <script src="construction/porte.js" defer></script>
+  <script src="construction/murs-interieur.js" defer></script>
+  <script src="construction/model.js" defer></script>
+  <script src="construction/portes.js" defer></script>
+  <script src="construction/profondeurs.js" defer></script>
+  <script src="construction/masquage.js" defer></script>
+  <script src="game.js" defer></script>
+  <script src="navigation.js" defer></script>
+  <script src="zone-construction.js" defer></script>
+  <script src="construction/tuiles.js" defer></script>
+  <script src="reperes-carte.js" defer></script>
+  <script src="sols-libres.js" defer></script>
+  <script src="murs-libres.js" defer></script>
+  <script src="toits-libres.js" defer></script>
+  <script src="commandes-carte.js" defer></script>
+  <script src="gestes-carte.js" defer></script>
+  <script src="construction-interface.js" defer></script>
+  <script src="interface-jeu.js" defer></script>
+  <script src="arbustes.js" defer></script>
+  <script src="cultures.js" defer></script>
+  <script src="cultures-interface.js" defer></script>
+  <script src="sauvegardes.js" defer></script>
+  <script src="recuperation-outils.js" defer></script>
+  <script src="inventaire.js" defer></script>
+  <script src="orties-masque.js" defer></script>
+  <script src="orties.js" defer></script>
+  <script src="integration.js" defer></script>
+</body>
+</html>
