@@ -356,22 +356,22 @@ function renderPanel(){if(!ui.open)return;let title='',html='';
   else {title=displayName(o); const btn=(action,label,disabled=false)=>`<button class="btn full ${action==='grow'?'secondary':''}" data-action="${action}" ${disabled?'disabled':''}>${label}</button>`;
    if(o.type==='pepiniere'){
     if(o.stage===2){html='<p>Portes ouvertes : les 4 jeunes plants sont prêts.</p>'+btn('nursery-collect','Récupérer les 4 jeunes plants');}
-    else if(o.stage===1){html=`<p>Production en cours, portes fermées. ${timeRemaining(o.readyAt)}</p>`+btn('grow','Terminer la pousse (test)',false);}
+    else if(o.stage===1){html=`<p>Production en cours, portes fermées. ${timeRemaining(o.readyAt)}</p>`;}
     else {html='<p>Pépinière vide, portes fermées. 1 carotte + 2 énergie → 4 jeunes plants.</p>'+btn('nursery','Lancer la production · 2 énergie',amount('carotte')<1||state.sport<2-Math.min(state.cul,1));}
    }else if(o.type==='potager'){
     if(!o.stage){html='<p>Parcelle vide. Repiquer les 4 jeunes plants issus de la pépinière.</p>'+btn('plant','Planter 4 jeunes plants · 1 énergie',amount('jeunes_plants')<4||state.sport<1);}
-    else if(o.stage===1){html=`<p>Jeunes plants en croissance. ${timeRemaining(o.readyAt)}</p>`+btn('grow','Terminer la pousse (test)');}
+    else if(o.stage===1){html=`<p>Jeunes plants en croissance. ${timeRemaining(o.readyAt)}</p>`;}
     else {html='<p>Carottes mûres : elles peuvent attendre indéfiniment sans mourir.</p>'+btn('harvest-garden','Récolter 8 carottes · 2 énergie',state.sport<2-Math.min(state.cul,1));}
    }else if(o.type==='champignonniere'){
     if(!o.seeded){html='<p>1 champignon + 1 énergie pour lancer la culture. La repousse est automatique après récolte.</p>'+btn('inoculate','Ensemencer · 1 champignon · 1 énergie',amount('champignon')<1||state.sport<1);}
     else if(o.stage===2){html='<p>Champignons mûrs, récolte renouvelable.</p>'+btn('harvest-mushrooms','Récolter 4 champignons · 2 énergie',state.sport<2-Math.min(state.cul,1));}
-    else {html=`<p>Champignons en croissance. ${timeRemaining(o.readyAt)}</p>`+btn('grow','Terminer la pousse (test)');}
+    else {html=`<p>Champignons en croissance. ${timeRemaining(o.readyAt)}</p>`;}
     if(o.seeded)html+=btn('change-seeding','Changer l’ensemencement (variétés futures)',true);
    }else if(o.type==='arbuste'){
     if(o.stage===3){html='<p>Baies mûres : aucune obligation de récolter rapidement.</p>'+btn('harvest-bush','Cueillir 2 baies · 1 énergie',state.sport<1);}
-    else {html=`<p>Arbuste vivant, pousse sans entretien. ${timeRemaining(o.readyAt)}</p>`+btn('grow','Terminer la pousse (test)');}
+    else {html=`<p>Arbuste vivant, pousse sans entretien. ${timeRemaining(o.readyAt)}</p>`;}
    }else if(o.type==='paillasse'){
-    html='<p>Paillasse : couchage sans bonus de confort, santé ou énergie. Le passage de la nuit par le sommeil reste à définir.</p>'+btn('rest','S’allonger un instant (test)');
+    html='<p>Paillasse : couchage sans bonus de confort, santé ou énergie. Le passage de la nuit par le sommeil reste à définir.</p>';
    }else if(o.type==='coffre'){
     html='<p>Stockage de test. Capacité finale du coffre à définir. Dépose ou reprends les objets un par un.</p>';
     for(let k of [...new Set([...Object.keys(state.items),...Object.keys(o.contents||{})])].sort()){
@@ -526,17 +526,17 @@ function displayName(o){return o.placed?(o.type==='arbuste'?'Arbuste transplant�
 function drawSelection(){const el=$('selection'),o=state.objects.find(v=>v.id===ui.selection);
  if(!o){el.hidden=true;return;}
  el.hidden=false;let d=Math.hypot(state.player.x-o.x,state.player.y-o.y),near=d<118;
- let note=near?'À portée.':ui.auto?.id===o.id?'En approche…':'Hors de portée.',actions='';
+ let note=near?'À portée.':ui.auto?.id===o.id?'En approche…':'',actions='';
  if(o.placed){
   if(['pepiniere','potager','champignonniere','arbuste','coffre','etabli','paillasse'].includes(o.type))actions+=`<button data-object-action="open">Interagir</button>`;
   actions+=`<button data-object-action="pickup">Récupérer avec ${o.type==='arbuste'?'la pelle':'le marteau'}</button>`;
  }else{
   const r=COLLECT[o.type];
-  if(o.type==='bush'&&o.harvested)actions+=`<div class="notice">Baies cueillies : l’arbuste reste nu. ${timeRemaining(o.readyAt)}</div><button data-object-action="regrow">Faire repousser (test)</button>`;
+  if(o.type==='bush'&&o.harvested)actions+=`<div class="notice">${timeRemaining(o.readyAt)}</div>`;
   else actions+=`<button data-object-action="gather">${r.tool?'Exploiter':'Ramasser / cueillir'} · ${r.cost} énergie</button>`;
   if(o.type==='bush')actions+=`<button data-object-action="uproot">Déterrer · 2 énergie</button>`;
  }
- el.innerHTML=`<strong>${displayName(o)}</strong><p>${note}</p>${actions}`;
+ el.innerHTML=`<strong>${displayName(o)}</strong>${note?`<p>${note}</p>`:''}${actions}`;
 }
 function interactWith(o,kind='gather'){
  if(!o)return;

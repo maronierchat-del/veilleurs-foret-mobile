@@ -1,8 +1,8 @@
-/* Massif couleur buisson, hauteur visible alignée sur le buisson à baies. */
+/* Dessin encré validé le 26 octobre ; hauteur visible du buisson à baies. */
 'use strict';
 const NettleResource=(()=>{
- PATHS.orties='../propositions/massif-orties-v8.png';
- SIZES.orties=SIZES.bush*NETTLE_SPRITE.bushVisibleRatio*.95;
+ PATHS.orties='../propositions/massif-orties-encre-v1.png';
+ SIZES.orties=SIZES.bush*NETTLE_SPRITE.bushVisibleRatio;
  COLLECT.orties={name:'Massif d’orties',item:'fibres',qty:COLLECT.tree.qty,cost:COLLECT.tree.cost,tool:COLLECT.tree.tool};
  TEST_RESPAWN_HOURS.orties=TEST_RESPAWN_HOURS.tree;NATURAL_TYPES.add('orties');
  PRECOMPUTED_HIT_MASKS.orties=NETTLE_SPRITE.mask;
