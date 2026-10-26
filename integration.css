@@ -94,3 +94,5 @@ body.tool-recovery-active #scene{cursor:crosshair}
 .game-interface .mobile-controls{display:none!important}
 .game-interface #panelClose{display:grid;place-items:center;min-width:44px;min-height:44px;flex-shrink:0}
 .game-interface .panel-top{position:sticky;top:0;z-index:2;background:#222e25}
+
+#gameInstallSection [hidden]{display:none!important;}

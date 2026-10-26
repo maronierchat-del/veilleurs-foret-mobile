@@ -4,8 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#25291e" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Les Veilleurs" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="assets/interface/jeu-180.png" />
   <title>Les Veilleurs de la Forêt</title>
-  <link rel="stylesheet" href="style.css?v=brume-frontiere-1" /><link rel="stylesheet" href="integration.css?v=brume-frontiere-1" /><link rel="stylesheet" href="construction-interface.css?v=brume-frontiere-1" /><link rel="stylesheet" href="inventaire.css?v=brume-frontiere-1" />
+  <link rel="stylesheet" href="style.css?v=installation-mobile-1" /><link rel="stylesheet" href="integration.css?v=installation-mobile-1" /><link rel="stylesheet" href="construction-interface.css?v=installation-mobile-1" /><link rel="stylesheet" href="inventaire.css?v=installation-mobile-1" />
 </head>
 <body>
   <svg width="0" height="0" aria-hidden="true" style="position:absolute;overflow:hidden"><defs><symbol id="energy-bolt" viewBox="0 0 16 20"><path d="M9 1 2 11h5l-1 8 8-11H9Z" /></symbol></defs></svg>
@@ -50,40 +55,41 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <div class="loading" id="loading">La vallée prend forme… <span id="loadProgress"></span></div>
   <audio id="forestMusic" src="assets/audio/forest_ambience.mp3" loop preload="auto" aria-hidden="true"></audio>
-  <script src="hitmasks.js?v=brume-frontiere-1" defer></script>
-  <script src="construction/geometry.js?v=brume-frontiere-1" defer></script>
-  <script src="construction/plancher.js?v=brume-frontiere-1" defer></script>
-  <script src="construction/murs.js?v=brume-frontiere-1" defer></script>
-  <script src="construction/toit-model.js?v=brume-frontiere-1" defer></script>
-  <script src="construction/toit-render.js?v=brume-frontiere-1" defer></script>
-  <script src="construction/porte.js?v=brume-frontiere-1" defer></script>
-  <script src="construction/murs-interieur.js?v=brume-frontiere-1" defer></script>
-  <script src="construction/model.js?v=brume-frontiere-1" defer></script>
-  <script src="construction/portes.js?v=brume-frontiere-1" defer></script>
-  <script src="construction/profondeurs.js?v=brume-frontiere-1" defer></script>
-  <script src="construction/masquage.js?v=brume-frontiere-1" defer></script>
-  <script src="game.js?v=brume-frontiere-1" defer></script>
-  <script src="navigation.js?v=brume-frontiere-1" defer></script>
-  <script src="zone-construction.js?v=brume-frontiere-1" defer></script>
-  <script src="construction/tuiles.js?v=brume-frontiere-1" defer></script>
-  <script src="reperes-carte.js?v=brume-frontiere-1" defer></script>
-  <script src="sols-libres.js?v=brume-frontiere-1" defer></script>
-  <script src="murs-libres.js?v=brume-frontiere-1" defer></script>
-  <script src="toits-libres.js?v=brume-frontiere-1" defer></script>
-  <script src="commandes-carte.js?v=brume-frontiere-1" defer></script>
-  <script src="gestes-carte.js?v=brume-frontiere-1" defer></script>
-  <script src="construction-interface.js?v=brume-frontiere-1" defer></script>
-  <script src="interface-jeu.js?v=brume-frontiere-1" defer></script>
-  <script src="arbustes.js?v=brume-frontiere-1" defer></script>
-  <script src="cultures.js?v=brume-frontiere-1" defer></script>
-  <script src="cultures-interface.js?v=brume-frontiere-1" defer></script>
-  <script src="sauvegardes.js?v=brume-frontiere-1" defer></script>
-  <script src="recuperation-outils.js?v=brume-frontiere-1" defer></script>
-  <script src="inventaire.js?v=brume-frontiere-1" defer></script>
-  <script src="orties-masque.js?v=brume-frontiere-1" defer></script>
-  <script src="orties.js?v=brume-frontiere-1" defer></script>
-  <script src="paysage.js?v=brume-frontiere-1" defer></script>
-  <script src="brume-frontiere.js?v=brume-frontiere-1" defer></script>
-  <script src="integration.js?v=brume-frontiere-1" defer></script>
+  <script src="hitmasks.js?v=installation-mobile-1" defer></script>
+  <script src="construction/geometry.js?v=installation-mobile-1" defer></script>
+  <script src="construction/plancher.js?v=installation-mobile-1" defer></script>
+  <script src="construction/murs.js?v=installation-mobile-1" defer></script>
+  <script src="construction/toit-model.js?v=installation-mobile-1" defer></script>
+  <script src="construction/toit-render.js?v=installation-mobile-1" defer></script>
+  <script src="construction/porte.js?v=installation-mobile-1" defer></script>
+  <script src="construction/murs-interieur.js?v=installation-mobile-1" defer></script>
+  <script src="construction/model.js?v=installation-mobile-1" defer></script>
+  <script src="construction/portes.js?v=installation-mobile-1" defer></script>
+  <script src="construction/profondeurs.js?v=installation-mobile-1" defer></script>
+  <script src="construction/masquage.js?v=installation-mobile-1" defer></script>
+  <script src="game.js?v=installation-mobile-1" defer></script>
+  <script src="navigation.js?v=installation-mobile-1" defer></script>
+  <script src="zone-construction.js?v=installation-mobile-1" defer></script>
+  <script src="construction/tuiles.js?v=installation-mobile-1" defer></script>
+  <script src="reperes-carte.js?v=installation-mobile-1" defer></script>
+  <script src="sols-libres.js?v=installation-mobile-1" defer></script>
+  <script src="murs-libres.js?v=installation-mobile-1" defer></script>
+  <script src="toits-libres.js?v=installation-mobile-1" defer></script>
+  <script src="commandes-carte.js?v=installation-mobile-1" defer></script>
+  <script src="gestes-carte.js?v=installation-mobile-1" defer></script>
+  <script src="construction-interface.js?v=installation-mobile-1" defer></script>
+  <script src="interface-jeu.js?v=installation-mobile-1" defer></script>
+  <script src="arbustes.js?v=installation-mobile-1" defer></script>
+  <script src="cultures.js?v=installation-mobile-1" defer></script>
+  <script src="cultures-interface.js?v=installation-mobile-1" defer></script>
+  <script src="sauvegardes.js?v=installation-mobile-1" defer></script>
+  <script src="recuperation-outils.js?v=installation-mobile-1" defer></script>
+  <script src="inventaire.js?v=installation-mobile-1" defer></script>
+  <script src="orties-masque.js?v=installation-mobile-1" defer></script>
+  <script src="orties.js?v=installation-mobile-1" defer></script>
+  <script src="paysage.js?v=installation-mobile-1" defer></script>
+  <script src="brume-frontiere.js?v=installation-mobile-1" defer></script>
+  <script src="installation.js?v=installation-mobile-1" defer></script>
+  <script src="integration.js?v=installation-mobile-1" defer></script>
 </body>
 </html>

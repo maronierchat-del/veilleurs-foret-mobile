@@ -77,7 +77,7 @@ const GameInterface=(()=>{
     document.querySelector('.eyebrow').textContent='FABRICATION';$('panelTitle').textContent='Fabrication à la main';
     $('panelBody').innerHTML=['marteau','pioche','hache','feu','etabli'].map(key=>{const r=CRAFT[key];return '<div class="item-row">'+rowImage(key)+'<div class="item-info"><strong>'+r.name+'</strong><small>'+fmtMaterials(r.materials)+' · 4 énergie</small></div><button data-action="craft" data-key="'+key+'" '+(!canCraft(key)?'disabled':'')+'>Fabriquer</button></div>';}).join('');return;
    }
-   if(ui.tab!=='construction'){const value=originalRenderPanel();document.querySelector('.eyebrow').textContent={inventory:'INVENTAIRE',craft:'FABRICATION',settings:'PARAMÈTRES',sport:'ACTIVITÉ'}[ui.tab]||'INSTALLATION';return value;}
+   if(ui.tab!=='construction'){const value=originalRenderPanel();if(ui.tab==='settings')$('panelBody').insertAdjacentHTML('afterbegin',GameInstall.markup());document.querySelector('.eyebrow').textContent={inventory:'INVENTAIRE',craft:'FABRICATION',settings:'PARAMÈTRES',sport:'ACTIVITÉ'}[ui.tab]||'INSTALLATION';return value;}
    document.querySelector('.eyebrow').textContent='CONSTRUCTION';
    $('panelTitle').textContent='Construire';
    $('panelBody').innerHTML=ConstructionUI.catalogue();

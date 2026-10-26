@@ -1,0 +1,17 @@
+{
+  "id": "./",
+  "name": "Les Veilleurs de la Forêt",
+  "short_name": "Les Veilleurs",
+  "description": "Construire, récolter et faire vivre sa clairière.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "theme_color": "#25291e",
+  "background_color": "#25291e",
+  "prefer_related_applications": false,
+  "icons": [
+    {"src": "assets/interface/jeu-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "assets/interface/jeu-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}
