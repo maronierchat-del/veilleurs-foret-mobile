@@ -14,5 +14,5 @@ const BuildingArea=(()=>{
   const corners=[[0,0],[W,0],[W,H],[0,H]].flatMap(([x,y])=>[0,height].map(z=>{const p=unproject(x,y+z*ui.camera.zoom);return grid(p.x,p.y);})),view=bounds(corners,1),region=bounds([[90,90],[WORLD.width-90,90],[WORLD.width-90,WORLD.height-90],[90,WORLD.height-90]].map(([x,y])=>grid(x,y)),1);
   return {minU:Math.max(view.minU,region.minU),maxU:Math.min(view.maxU,region.maxU),minV:Math.max(view.minV,region.minV),maxV:Math.min(view.maxV,region.maxV)};
  }
- return {cell,edge,visible,legacy,tools};
+ return {cell,edge,visible,legacy,tools,fixedCount:tools?16:0};
 })();

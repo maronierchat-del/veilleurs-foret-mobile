@@ -6,7 +6,8 @@ const ConstructionTrial=(()=>{
  const camera={x:180,y:350,zoom:1},surface=document.createElement('canvas');
  surface.width=1100;surface.height=850;
  const context=surface.getContext('2d',{willReadFrequently:true}),floorSurface=document.createElement('canvas');floorSurface.width=surface.width;floorSurface.height=surface.height;
- const floors=Array.from({length:16},(_,i)=>({key:'sol',u:i%4,v:Math.floor(i/4)}));
+ const fixedCount=BuildingArea.fixedCount;
+ const floors=Array.from({length:fixedCount},(_,i)=>({key:'sol',u:i%4,v:Math.floor(i/4)}));
  const roofs=[],walls=[],objects=[],images={};let rotation=0,occlusion,ready=false,lastKey='',lastMs=0,renderFloors=floors,renderWalls=walls,renderRoofs=roofs;
  const modelObjects=()=>[...objects,...CultivationPlacement.models()];
  function refreshRoofs(preview=null){renderRoofs=preview||roofs;lastKey='';}
@@ -17,6 +18,7 @@ const ConstructionTrial=(()=>{
  const turn=([u,v],r)=>[[u,v],[4-v,u],[4-u,4-v],[v,4-u]][r];
  function shell(r=0,open=true){
   rotation=r;walls.length=0;roofs.length=0;objects.length=0;
+  if(!fixedCount){lastKey='';return;}
   for(let u=0;u<4;u++)for(let v=0;v<4;v++){
    const d=[v,3-u,3-v,u],low=Math.min(...d),s=d.map((n,i)=>n===low?i:-1).filter(i=>i>=0);
    const rot=s.length===1?s[0]:s.includes(0)&&s.includes(3)?0:s.includes(0)&&s.includes(1)?1:s.includes(1)&&s.includes(2)?2:3;
@@ -30,32 +32,32 @@ const ConstructionTrial=(()=>{
  shell();
  function fixture(s){
   if(!s.constructionTrial)s.constructionTrial={version:1,rotation:0,doorOpen:true};
+  if(!fixedCount){s.objects=s.objects.filter(o=>!o.trialFixture);s.settlementVersion=1;}
   const keep=(list,clean)=>clean.map((p,i)=>({...list?.[i],...p}));
   s.constructionTrial.freeFloors=keep(s.constructionTrial.freeFloors,FloorPlacement.sanitize(s.constructionTrial.freeFloors));
-  floors.splice(16);floors.push(...s.constructionTrial.freeFloors);
+  floors.splice(fixedCount);floors.push(...s.constructionTrial.freeFloors);
   shell(s.constructionTrial.rotation,s.constructionTrial.doorOpen);
-  const savedOut=s.constructionTrial.doorOutward;if(Array.isArray(savedOut)&&savedOut.length===2&&savedOut.every(Number.isFinite)&&Math.abs(savedOut[0])+Math.abs(savedOut[1])===1)walls.find(w=>w.key==='porte').outward=[...savedOut];
+  const savedOut=s.constructionTrial.doorOutward;if(fixedCount&&Array.isArray(savedOut)&&savedOut.length===2&&savedOut.every(Number.isFinite)&&Math.abs(savedOut[0])+Math.abs(savedOut[1])===1)walls.find(w=>w.key==='porte').outward=[...savedOut];
   s.constructionTrial.freeWalls=keep(s.constructionTrial.freeWalls,WallPlacement.sanitize(s.constructionTrial.freeWalls,s.constructionTrial.freeFloors,walls));
   walls.push(...s.constructionTrial.freeWalls);renderWalls=walls;
   s.constructionTrial.freeRoofs=keep(s.constructionTrial.freeRoofs,RoofPlacement.sanitize(s.constructionTrial.freeRoofs,roofs));roofs.push(...s.constructionTrial.freeRoofs);renderRoofs=roofs;
   // Clairière d'essai : les ressources naturelles sont conservées hors de la maison.
   // Déplacement déterministe des seules ressources qui empêcheraient de la visiter.
-  for(const o of s.objects){if(o.placed)continue;const q=toGrid(o.x,o.y);if(q.u>-.8&&q.u<4.8&&q.v>-.8&&q.v<5.5){o.x-=720;o.y-=400;}}
+  for(const o of s.objects){if(!fixedCount||o.placed)continue;const q=toGrid(o.x,o.y);if(q.u>-.8&&q.u<4.8&&q.v>-.8&&q.v<5.5){o.x-=720;o.y-=400;}}
   let bench=s.objects.find(o=>o.trialFixture==='bench');
-  const a=M.anchor(objects[0]),p=toWorld(...a);
-  if(!bench){bench={id:s.nextId++,type:'etabli',placed:true,stage:0,trialFixture:'bench'};s.objects.push(bench);}Object.assign(bench,p);
-  NettleResource.migrate(s,{toGrid,toWorld});return s;
+  if(fixedCount){const a=M.anchor(objects[0]),p=toWorld(...a);if(!bench){bench={id:s.nextId++,type:'etabli',placed:true,stage:0,trialFixture:'bench'};s.objects.push(bench);}Object.assign(bench,p);}
+  NettleResource.migrate(s,{toGrid,toWorld});Landscape.migrate(s,{toGrid,toWorld});return s;
  }
  function returnToDoor(){MapControls.center();const p=toWorld(...turn([.5,4.65],rotation));Object.assign(state.player,p);ui.auto=null;ui.keys.clear();ui.touch.clear();ui.camera.x=p.x;ui.camera.y=p.y-120/(ui.camera.zoom*.7);lastKey='';saveSoon();}
  const originalNewState=newState;
- newState=function(){const s=fixture(originalNewState()),p=toWorld(.5,4.65);Object.assign(s.player,p);return s;};
+ newState=function(){const s=fixture(originalNewState());if(fixedCount)Object.assign(s.player,toWorld(.5,4.65));return s;};
  SaveContinuity.install({prepare(s){
   spaceWildResources(s);migrateSave(s);
   // Refuser une pièce perdue par normalisation plutôt que réenregistrer une scène amputée.
-  const t=s.constructionTrial;
-  const lists=[['freeFloors',FloorPlacement.sanitize(t.freeFloors)],['freeWalls',WallPlacement.sanitize(t.freeWalls,t.freeFloors,walls.slice(0,16))],['freeRoofs',RoofPlacement.sanitize(t.freeRoofs,roofs.slice(0,16))]];
+  const t=s.constructionTrial;if(!fixedCount){s.objects=s.objects.filter(o=>!o.trialFixture);s.settlementVersion=1;}
+  const lists=[['freeFloors',FloorPlacement.sanitize(t.freeFloors)],['freeWalls',WallPlacement.sanitize(t.freeWalls,t.freeFloors,walls.slice(0,BuildingArea.fixedCount))],['freeRoofs',RoofPlacement.sanitize(t.freeRoofs,roofs.slice(0,BuildingArea.fixedCount))]];
   for(const [key,clean]of lists){const old=t[key]||[];if(clean.length!==old.length)throw Error('Constructions incompatibles : '+key+'. Aucune pièce supprimée.');t[key]=clean.map((p,i)=>({...old[i],...p}));}
-  NettleResource.migrate(s,{toGrid,toWorld});
+  NettleResource.migrate(s,{toGrid,toWorld});Landscape.migrate(s,{toGrid,toWorld});
  },activate(s){fixture(s);refreshFloors();refreshWalls();refreshRoofs();}});
  const safeLoad=loadSave;
  loadSave=function(){return fixture(safeLoad());};
@@ -65,18 +67,18 @@ const ConstructionTrial=(()=>{
  const stockPieces=['sol','mur','fenetre','porte'];
  for(const key of [...stockPieces,'pepiniere','potager','champignonniere'])CRAFT[key].bench=true;
  const originalCraft=craft;
- craft=function(key){if(key==='feu'&&!hasTool('marteau')){toast('Équipe le marteau pour fabriquer le feu de camp.');return;}if([...stockPieces,'toit','feu','marmite'].includes(key)||CultivationPlacement.supports(key)){originalCraft(key);return;}if(CRAFT[key]?.kind!=='outil'){toast('Fabrication des installations et constructions raccordée au prochain jalon.');return;}const before=amount(key);originalCraft(key);if(amount(key)>before&&key!=='sac'){if(!state.quickTools.includes(key))state.quickTools.push(key);commit();toast('Outil fabriqué et équipé.');}};
+ craft=function(key){if(['feu','etabli'].includes(key)&&!hasTool('marteau')){toast('Équipe le marteau pour cette fabrication.');return;}if([...stockPieces,'toit','feu','marmite'].includes(key)||CultivationPlacement.supports(key)){originalCraft(key);return;}if(CRAFT[key]?.kind!=='outil'){toast('Fabrication des installations et constructions raccordée au prochain jalon.');return;}const before=amount(key);originalCraft(key);if(amount(key)>before&&key!=='sac'){if(!state.quickTools.includes(key))state.quickTools.push(key);commit();toast('Outil fabriqué et équipé.');}};
  const originalCanCraft=canCraft;
- canCraft=function(key){return (key!=='feu'||hasTool('marteau'))&&([...stockPieces,'toit','feu','marmite'].includes(key)||CultivationPlacement.supports(key)||CRAFT[key]?.kind==='outil')&&originalCanCraft(key);};
+ canCraft=function(key){return (!['feu','etabli'].includes(key)||hasTool('marteau'))&&([...stockPieces,'toit','feu','marmite'].includes(key)||CultivationPlacement.supports(key)||CRAFT[key]?.kind==='outil')&&originalCanCraft(key);};
  const originalProtectedSpot=protectedSpot;
  protectedSpot=function(x,y){if(originalProtectedSpot(x,y))return true;if(!openWorld)return false;const q=toGrid(x,y);if([...floors,...roofs].some(p=>q.u>=p.u&&q.u<=p.u+1&&q.v>=p.v&&q.v<=p.v+1))return true;return walls.some(w=>{const [a,b]=G.ends(w),p=toWorld((a[0]+b[0])/2,(a[1]+b[1])/2);return Math.hypot(x-p.x,y-p.y)<192;});};
  const originalWalk=canWalk;
  canWalk=function(x,y){const q=toGrid(x,y);return !BushTransplant.blocked(q)&&!M.blocked([q.u,q.v],modelObjects(),walls,DoorGeometry,G)&&originalWalk(x,y);};
- const search=ObstacleNavigation.create((x,y)=>canWalk(x,y),WORLD),navigation={clear:search.clear,plan(from,to,radius=0){const a=toGrid(from.x,from.y),b=toGrid(to.x,to.y),inside=q=>q.u>=0&&q.u<4&&q.v>=0&&q.v<4;if(inside(a)!==inside(b)&&!walls.find(w=>w.key==='porte').open)return null;return search.plan(from,to,radius);}};
+ const search=ObstacleNavigation.create((x,y)=>canWalk(x,y),WORLD),navigation={clear:search.clear,plan(from,to,radius=0){const a=toGrid(from.x,from.y),b=toGrid(to.x,to.y),inside=q=>q.u>=0&&q.u<4&&q.v>=0&&q.v<4;if(fixedCount&&inside(a)!==inside(b)&&!walls.find(w=>w.key==='porte').open)return null;return search.plan(from,to,radius);}};
  // Les fenêtres et murs transparents restent physiques ; le banc est déjà testé par M.
  SIZES.person=SIZES.right=SIZES.left=SIZES.back=110;
- function interior(){const q=toGrid(state.player.x,state.player.y);return q.u>=0&&q.u<4&&q.v>=0&&q.v<4;}
- function hiddenWalls(){const main=interior()?renderWalls.slice(0,16).filter(w=>w.rot%2?Math.abs(w.u)<1e-8:Math.abs(w.v-4)<1e-8):[];return [...main,...WallPlacement.hidden(toGrid(state.player.x,state.player.y),renderWalls)];}
+ function interior(){const q=toGrid(state.player.x,state.player.y);return !!fixedCount&&q.u>=0&&q.u<4&&q.v>=0&&q.v<4;}
+ function hiddenWalls(){const main=interior()?renderWalls.slice(0,BuildingArea.fixedCount).filter(w=>w.rot%2?Math.abs(w.u)<1e-8:Math.abs(w.v-4)<1e-8):[];return [...main,...WallPlacement.hidden(toGrid(state.player.x,state.player.y),renderWalls)];}
  function toggleDoor(p=walls.find(w=>w.key==='porte')){if(!walls.includes(p)||p.key!=='porte')return false;const q=toGrid(state.player.x,state.player.y),next={...p,open:!p.open,...(!p.open?{outward:HouseDoor.awayFrom(p,q,G)}:{})};
   const touches=(point,poly,radius=.1)=>M.contains([point.u,point.v],poly)||poly.some((a,i)=>{const b=poly[(i+1)%poly.length];return G.segmentDistance({x:point.u,y:point.v},{x:a[0],y:a[1]},{x:b[0],y:b[1]})<radius;});
   // Tester tout le balayage, pas seulement la position finale du battant.
@@ -86,7 +88,7 @@ const ConstructionTrial=(()=>{
    if(!blocked)blocked=state.objects.some(o=>{if(o.trialFixture||CultivationPlacement.isFixture(o))return false;if(BushTransplant.isFixture(o))return M.overlap(leaf,BushTransplant.footprint(o));const poly=leaf.map(([u,v])=>{const a=toWorld(u,v);return [a.x,a.y];}),radius=o.type==='tree'?47:o.type==='rock'?42:o.type==='bush'?36:35;return touches({u:o.x,v:o.y},poly,radius);});
   }
   if(blocked){toast('La porte est bloquée par le personnage ou un obstacle.');return false;}
-  p.open=next.open;p.outward=next.outward;if(walls.indexOf(p)<16){state.constructionTrial.doorOpen=p.open;state.constructionTrial.doorOutward=[...p.outward];}ui.auto=null;lastKey='';saveSoon();return true;
+  p.open=next.open;p.outward=next.outward;if(walls.indexOf(p)<BuildingArea.fixedCount){state.constructionTrial.doorOpen=p.open;state.constructionTrial.doorOutward=[...p.outward];}ui.auto=null;lastKey='';saveSoon();return true;
  }
  const screenCamera=()=>{const p=project(origin.x,origin.y);return {x:p.x,y:p.y,zoom:ui.camera.zoom};};
  function doorAt(x,y){
@@ -122,7 +124,7 @@ const ConstructionTrial=(()=>{
  }
  objectAt=function(x,y){const c=screenCamera(),q=G.unproject(x,y,c),p=G.project(q.u,q.v,camera),d=occlusion?.last,px=Math.floor(p.x),py=Math.floor(p.y);
   const sample=openWorld&&tiles?.sample(p.x-camera.x,p.y-camera.y),owner=openWorld?(sample?.tile.last.owners[sample.index]||0):d&&px>=0&&py>=0&&px<d.W&&py<d.H?d.owners[py*d.W+px]:0;
-  if(owner===1)return state.objects.find(o=>o.trialFixture==='bench');
+  if(owner===1&&fixedCount)return state.objects.find(o=>o.trialFixture==='bench');
   const model=modelObjects()[owner-1];if(model?.sourceId)return state.objects.find(o=>o.id===model.sourceId);
   const found=originalObjectAt(x,y);if(openWorld&&sample&&found&&(found.type==='bush'||BushTransplant.isFixture(found))&&owner!==30000+state.objects.filter(o=>!o.trialFixture).indexOf(found))return null;return found?.trialFixture||CultivationPlacement.isFixture(found)?null:found;
  };

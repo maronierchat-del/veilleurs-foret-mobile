@@ -682,7 +682,7 @@ function objectAt(px,py){
  return matches[index];
 }
 function canWalk(x,y){if(x<55||x>WORLD.width-55||y<55||y>WORLD.height-55)return false;
- for(let o of state.objects){if(o.trialFixture||o.placed&&['arbuste','feu','marmite','pepiniere','potager','champignonniere'].includes(o.type)||!['tree','orties','rock','bush','arbuste','feu','etabli','coffre','marmite','pepiniere','champignonniere','potager'].includes(o.type))continue;
+ for(let o of state.objects){if(o.trialFixture||o.placed&&['etabli','arbuste','feu','marmite','pepiniere','potager','champignonniere'].includes(o.type)||!['tree','orties','rock','bush','arbuste','feu','etabli','coffre','marmite','pepiniere','champignonniere','potager'].includes(o.type))continue;
  let radius=['tree','orties'].includes(o.type)?35:o.type==='rock'?30:o.type==='bush'?24:23;
  if(Math.hypot(o.x-x,o.y-y)<radius+12)return false;
  }return true;}

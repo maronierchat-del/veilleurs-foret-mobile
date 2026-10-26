@@ -3,7 +3,7 @@
 'use strict';
 const SaveContinuity=(()=>{
  const APPLICATION='veilleurs-construction-etape1',FORMAT=2,LIMIT=12000000;
- const migrationKey=SAVE_KEY+'.avant-migration-v1',importKey=SAVE_KEY+'.avant-import';
+ const migrationKey=SAVE_KEY+'.avant-migration-v1',importKey=SAVE_KEY+'.avant-import',worldKey=SAVE_KEY+'.avant-monde-libre-v1';
  let expectedRaw=null,loaded=false,prepare,activate,lastError='',importing=false;
  const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
  const own=(o,k)=>Object.hasOwn(o,k);
@@ -24,6 +24,7 @@ const SaveContinuity=(()=>{
  function validate(s){
   requireValue(record(s)&&s.version===1,'Version des données de jeu incompatible.');safeTree(s);
   if(own(s,'nettlesVersion'))requireValue(s.nettlesVersion===1,'Version des massifs d’orties incompatible.');
+  for(const key of ['settlementVersion','landscapeVersion'])if(own(s,key))requireValue(s[key]===1,'Version de la carte incompatible.');
   requireValue(record(s.player)&&Number.isFinite(s.player.x)&&Number.isFinite(s.player.y),'Position du personnage invalide.');
   requireValue(['person','right','left','back'].includes(s.player.face),'Orientation du personnage invalide.');
   requireValue(nonnegative(s.sport)&&nonnegative(s.cul),'Réserves d’énergie invalides.');
@@ -74,9 +75,9 @@ const SaveContinuity=(()=>{
   else requireValue(record(input)&&input.version===1&&record(input.constructionTrial),'Ancienne sauvegarde extérieure au laboratoire ou version incompatible.');
   const candidate=validate(envelope?input.state:input);
   // Toutes les transformations portent sur cette nouvelle valeur JSON, jamais sur state.
-  const nettlesMigrated=candidate.nettlesVersion!==1;
+  const nettlesMigrated=candidate.nettlesVersion!==1,worldMigrated=!BuildingArea.tools&&(candidate.settlementVersion!==1||candidate.landscapeVersion!==1);
   prepare(candidate);validate(candidate);
-  return {state:candidate,legacy:!envelope,nettlesMigrated};
+  return {state:candidate,legacy:!envelope,nettlesMigrated,worldMigrated};
  }
  function encode(s){validate(s);return JSON.stringify({application:APPLICATION,formatVersion:FORMAT,savedAt:Date.now(),state:s});}
  function unchanged(){requireValue(localStorage.getItem(SAVE_KEY)===expectedRaw,'La partie a changé dans un autre onglet. Exporte ta progression puis recharge ce jeu.');}
@@ -94,12 +95,13 @@ const SaveContinuity=(()=>{
   expectedRaw=localStorage.getItem(SAVE_KEY);
   let candidate;
   if(expectedRaw===null){
-   requireValue(localStorage.getItem(migrationKey)===null&&localStorage.getItem(importKey)===null,'Sauvegarde principale absente. Un secours est disponible ci-dessous.');
+   requireValue(localStorage.getItem(migrationKey)===null&&localStorage.getItem(importKey)===null&&localStorage.getItem(worldKey)===null,'Sauvegarde principale absente. Un secours est disponible ci-dessous.');
    candidate=newState();validate(candidate);
   }
   else{
    const decoded=decode(expectedRaw);candidate=decoded.state;
    if(decoded.legacy||decoded.nettlesMigrated){unchanged();checkpoint(migrationKey,expectedRaw);}
+   if(decoded.worldMigrated){unchanged();checkpoint(worldKey,expectedRaw);}
   }
   loaded=true;return candidate;
  }
@@ -143,7 +145,7 @@ const SaveContinuity=(()=>{
   const p=document.createElement('p');p.textContent='Partie conservée, chargement interrompu : '+error.message;host.append(p);
   const button=(label,action)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=action;host.append(b);};
   if(expectedRaw!==null)button('Exporter les données conservées',()=>download(expectedRaw,'veilleurs-donnees-conservees.json'));
-  for(const [key,label]of [[migrationKey,'Exporter le secours avant mise à jour'],[importKey,'Exporter le secours avant import']]){
+  for(const [key,label]of [[migrationKey,'Exporter le secours avant mise à jour'],[importKey,'Exporter le secours avant import'],[worldKey,'Exporter le secours avant retrait du témoin / paysage']]){
    try{const raw=localStorage.getItem(key);if(raw!==null)button(label,()=>download(raw,'veilleurs-secours.json'));}catch{}
   }
   const label=document.createElement('label');label.textContent='Importer un fichier de secours : ';
@@ -153,8 +155,8 @@ const SaveContinuity=(()=>{
   prepare=hooks.prepare;activate=hooks.activate;loadSave=load;saveNow=save;importSave=importFile;
   exportSave=function(){try{download(encode(state),'veilleurs-construction-'+new Date().toISOString().slice(0,10)+'.json');toast('Fichier de sauvegarde exporté.');}catch(e){toast('Export impossible : '+e.message);}};
   const originalPanelClick=handlePanelClick;
-  handlePanelClick=function(e){const b=e.target.closest('[data-action=export-rescue]');if(b){try{if(![migrationKey,importKey].includes(b.dataset.backup))return;const raw=localStorage.getItem(b.dataset.backup);if(raw!==null)download(raw,'veilleurs-secours.json');else toast('Aucun secours de ce type : aucune opération correspondante effectuée.');}catch(error){toast(error.message);}return;}return originalPanelClick(e);};
+  handlePanelClick=function(e){const b=e.target.closest('[data-action=export-rescue]');if(b){try{if(![migrationKey,importKey,worldKey].includes(b.dataset.backup))return;const raw=localStorage.getItem(b.dataset.backup);if(raw!==null)download(raw,'veilleurs-secours.json');else toast('Aucun secours de ce type : aucune opération correspondante effectuée.');}catch(error){toast(error.message);}return;}return originalPanelClick(e);};
  }
- function backupButtons(){return `<button class="btn full secondary" data-action="export-rescue" data-backup="${migrationKey}">Exporter le secours avant mise à jour</button><button class="btn full secondary" data-action="export-rescue" data-backup="${importKey}">Exporter le secours avant import</button>`;}
- return {install,decode,encode,validate,recovery,backupButtons,migrationKey,importKey,get error(){return lastError;}};
+ function backupButtons(){return `<button class="btn full secondary" data-action="export-rescue" data-backup="${migrationKey}">Exporter le secours avant mise à jour</button><button class="btn full secondary" data-action="export-rescue" data-backup="${importKey}">Exporter le secours avant import</button><button class="btn full secondary" data-action="export-rescue" data-backup="${worldKey}">Exporter le secours avant retrait du témoin / paysage</button>`;}
+ return {install,decode,encode,validate,recovery,backupButtons,migrationKey,importKey,worldKey,get error(){return lastError;}};
 })();

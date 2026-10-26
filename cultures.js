@@ -2,8 +2,8 @@
 'use strict';
 const CultivationPlacement=(()=>{
  let api,rotation=0;const images={},M=ValidatedModel,G=LabGeometry;
- const supports=key=>['pepiniere','potager','champignonniere'].includes(key),isFixture=o=>o?.placed&&supports(o.type);
- function model(o){const q=api.toGrid(o.x,o.y),rot=Number.isInteger(o.rot)?((o.rot%4)+4)%4:0;return {key:o.type,u:q.u-.5,v:q.v-.5,rot,stage:o.type==='pepiniere'?(o.stage===2?'ouverte':'fermee'):M.specs[o.type].states[o.stage]||'vide',sourceId:o.id};}
+ const supports=key=>['etabli','pepiniere','potager','champignonniere'].includes(key),isFixture=o=>o?.placed&&!o.trialFixture&&supports(o.type);
+ function model(o){const q=api.toGrid(o.x,o.y),rot=Number.isInteger(o.rot)?((o.rot%4)+4)%4:0,a=M.anchor({key:o.type,u:0,v:0,rot});return {key:o.type,u:q.u-a[0],v:q.v-a[1],rot,stage:o.type==='pepiniere'?(o.stage===2?'ouverte':'fermee'):M.specs[o.type].states[o.stage]??M.specs[o.type].states[0],sourceId:o.id};}
  const models=()=>api?state.objects.filter(isFixture).map(model):[];
  // Réserver aussi les battants de la pépinière prête : la maturation ne doit
  // pas faire apparaître une porte au travers d'une installation voisine.
