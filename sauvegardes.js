@@ -32,6 +32,18 @@ const SaveContinuity=(()=>{
   requireValue(record(s.remainders)&&record(s.cardioDays),'Activités incomplètes.');
   for(const [k,n]of Object.entries(s.remainders))requireValue(own(MODES,k)&&integer(n)&&n<MODES[k],'Secondes reportées invalides.');
   for(const [day,n]of Object.entries(s.cardioDays))requireValue(/^\d{4}-\d{2}-\d{2}$/.test(day)&&integer(n),'Points cardio invalides.');
+  if(own(s,'paiDays')){
+   requireValue(record(s.paiDays),'Saisies PAI invalides.');
+   for(const [day,n]of Object.entries(s.paiDays)){
+    const date=new Date(day+'T00:00:00Z');
+    requireValue(/^\d{4}-\d{2}-\d{2}$/.test(day)&&Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===day&&integer(n)&&n<=1000000,'Saisie PAI invalide.');
+    if(s.paiStartDate)requireValue(day>=s.paiStartDate,'Saisie PAI antérieure au début de partie.');
+   }
+  }
+  if(own(s,'paiStartDate')){
+   const date=new Date(s.paiStartDate+'T00:00:00Z');
+   requireValue(typeof s.paiStartDate==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s.paiStartDate)&&Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===s.paiStartDate,'Début des saisies PAI invalide.');
+  }
   requireValue(Array.isArray(s.history)&&s.history.every(v=>typeof v==='string'),'Historique invalide.');
   requireValue(Array.isArray(s.objects)&&s.objects.length<100000,'Liste des objets invalide.');
   const ids=new Set();let maxId=0,benches=0;

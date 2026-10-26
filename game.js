@@ -146,7 +146,7 @@ function spaceWildResources(save){
  save.natureLayoutVersion=2;
  return moved;
 }
-function newState(){let s={version:1,natureLayoutVersion:2,player:{x:WORLD.centerX,y:WORLD.centerY,face:'person'},sport:0,cul:0,mode:'normal',equippedTool:null,quickTools:[],audio:{music:false,sfx:false},remainders:{pls:0,tres_doux:0,doux:0,normal:0,sportif:0},cardioDays:{},items:{},objects:[],nextId:1,history:[],respawnQueue:[],cropTimeVersion:2,constructionGridVersion:2};
+function newState(){let s={version:1,natureLayoutVersion:2,player:{x:WORLD.centerX,y:WORLD.centerY,face:'person'},sport:0,cul:0,mode:'normal',equippedTool:null,quickTools:[],audio:{music:false,sfx:false},remainders:{pls:0,tres_doux:0,doux:0,normal:0,sportif:0},cardioDays:{},paiDays:{},paiStartDate:paiDateDefault(),items:{},objects:[],nextId:1,history:[],respawnQueue:[],cropTimeVersion:2,constructionGridVersion:2};
  const rnd=random(210026);
  const add=(type,x,y,extra={})=>s.objects.push({id:s.nextId++,type,x,y,placed:false,...extra});
  // Clairière naturelle : aucun feu de camp, établi, potager ou autre objet fabriqué.
@@ -306,6 +306,20 @@ function requestStationAction(action,key){
 }
 function rowImage(key){const construction=typeof ConstructionUI!=='undefined'&&ConstructionUI.image(key);if(construction)return construction;if(key==='jeunes_plants')return '<img alt="" src="assets/propositions/jeunes-plants-godet-bois-v1.png" loading="lazy">';if(key==='toit')return '<img alt="" src="construction/pan-encre-v1.png" loading="lazy">';return `<img alt="" src="${imgPath(key)}" loading="lazy">`;}
 function itemRow(key,details,action,actionText,disabled=false,quantity=null){return `<div class="item-row">${quantity===null?'':`<span class="item-quantity" aria-label="Quantité : ${quantity}">${quantity}</span>`}${rowImage(key==='carotte'?'carotte_item':key)}<div class="item-info"><strong>${LABEL[key]||CRAFT[key]?.name||FOOD[key]?.name||key}</strong>${details?`<small>${details}</small>`:''}</div>${action?`<button type="button" data-action="${action}" data-key="${key}" ${disabled?'disabled':''}>${actionText}</button>`:''}</div>`;}
+let paiSelectedDate=null;
+let paiCalendarOpen=false,paiCalendarMonth=null;
+function paiDateDefault(){const d=new Date();d.setDate(d.getDate()-1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function paiCalendarMarkup(){
+ const selected=paiSelectedDate||paiDateDefault(),month=paiCalendarMonth||selected.slice(0,7),[year,m]=month.split('-').map(Number),first=new Date(year,m-1,1,12),last=new Date(year,m,0,12),earliest=state.paiStartDate||paiDateDefault(),latest=paiDateDefault();
+ const adjacent=offset=>{const d=new Date(year,m-1+offset,1,12);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;};
+ let days=Array.from({length:(first.getDay()+6)%7},()=>'<span></span>').join('');
+ for(let n=1;n<=last.getDate();n++){
+  const day=`${month}-${String(n).padStart(2,'0')}`,filled=Object.hasOwn(state.paiDays||{},day),value=state.paiDays?.[day],disabled=day<earliest||day>latest;
+  days+=`<button type="button" data-action="pai-day" data-key="${day}" class="pai-day${filled?' has-pai':''}" aria-pressed="${day===selected}" aria-label="${n} ${first.toLocaleDateString('fr-FR',{month:'long',year:'numeric'})}, ${filled?value+' PAI saisis':'sans saisie'}" ${disabled?'disabled':''}><span>${n}</span><small>${filled?value:disabled?'':'—'}</small></button>`;
+ }
+ return `<div class="pai-calendar-heading"><button type="button" data-action="pai-month" data-key="${adjacent(-1)}" aria-label="Mois précédent" ${month<=earliest.slice(0,7)?'disabled':''}>‹</button><strong aria-live="polite">${first.toLocaleDateString('fr-FR',{month:'long',year:'numeric'})}</strong><button type="button" data-action="pai-month" data-key="${adjacent(1)}" aria-label="Mois suivant" ${month>=latest.slice(0,7)?'disabled':''}>›</button></div><div class="pai-calendar-grid">${['L','M','M','J','V','S','D'].map(d=>`<span class="pai-weekday" aria-hidden="true">${d}</span>`).join('')}${days}</div><p class="pai-calendar-legend"><span>● PAI saisis</span> · — sans saisie</p>`;
+}
+function updatePAICalendar(){const calendar=$('paiCalendar');if(!calendar)return;calendar.hidden=!paiCalendarOpen;calendar.innerHTML=paiCalendarMarkup();$('paiCalendarToggle').setAttribute('aria-expanded',String(paiCalendarOpen));}
 function renderPanel(){if(!ui.open)return;let title='',html='';
  if(ui.tab==='sport'){
    title='Énergie sportive';const mode=state.mode;
@@ -313,11 +327,12 @@ function renderPanel(){if(!ui.open)return;let title='',html='';
    <h3>Enregistrer une activité</h3><div class="form-row"><div><label for="mins">Minutes</label><input type="number" id="mins" min="0" step="1" value="4" inputmode="numeric"></div><div><label for="secs">Secondes</label><input type="number" id="secs" min="0" max="59" step="1" value="0" inputmode="numeric"></div></div>
    <button class="btn full" data-action="exercise">Créditer cette activité</button>
    <p class="soft">Secondes reportées dans ce mode : <b>${state.remainders[mode]||0} s</b>.</p>
-   <h3>Points cardio · saisie manuelle</h3><p>Indique le total du jour affiché par Google Fit. Seule l’augmentation depuis la dernière saisie est créditée.</p>
-   <label for="cardioDate">Jour</label><input type="date" id="cardioDate" value="${new Date().toLocaleDateString('en-CA')}">
-   <label for="cardioAmount">Total de points cardio du jour</label><input type="number" id="cardioAmount" min="0" step="1" value="0" inputmode="numeric">
-   <button class="btn secondary full" data-action="cardio">Convertir les nouveaux points cardio</button>
-   <p class="soft">Coefficient provisoire : 1 point cardio = 2 sportifs. Pas de synchronisation automatique.</p>`;
+   <h3>PAI · saisie manuelle</h3>
+   <label for="paiDate">Jour</label><div class="pai-date-row"><input type="date" id="paiDate" min="${state.paiStartDate||paiDateDefault()}" max="${paiDateDefault()}" value="${paiSelectedDate||paiDateDefault()}"><button type="button" id="paiCalendarToggle" data-action="pai-calendar" aria-expanded="${paiCalendarOpen}" aria-controls="paiCalendar">Calendrier</button></div>
+   <div id="paiCalendar" class="pai-calendar" ${paiCalendarOpen?'':'hidden'}>${paiCalendarMarkup()}</div>
+   <label for="paiAmount">PAI gagnés ce jour-là</label><input type="number" id="paiAmount" min="0" max="1000000" step="1" value="${state.paiDays?.[paiSelectedDate||paiDateDefault()]||0}" inputmode="numeric">
+   <button class="btn secondary full" data-action="pai">Enregistrer les PAI</button>
+   <p class="soft">1 PAI = 3 points d’énergie sportive, quelle que soit la difficulté.</p>`;
  }
  if(ui.tab==='inventory'){
    title='Ton sac';
@@ -616,12 +631,19 @@ function registerActivity(){const mins=Number($('mins')?.value||0),secs=Number($
  const mode=state.mode,tot=(state.remainders[mode]||0)+mins*60+secs,gain=Math.floor(tot/MODES[mode]);
  state.remainders[mode]=tot%MODES[mode];state.sport+=gain;log(`Sport : ${mins} min ${secs} s, +${gain} points (${mode})`);
  toast(`+${gain} énergie sportive · ${state.remainders[mode]} s conservées.`);commit();}
-function registerCardio(){const date=$('cardioDate')?.value,total=Number($('cardioAmount')?.value);
- if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')||!Number.isSafeInteger(total)||total<0||total>1000000){toast('Indique une date et un total de points cardio valide.');return;}
- const prev=Number(state.cardioDays[date]||0),delta=Math.max(0,total-prev);
- state.cardioDays[date]=Math.max(prev,total);state.sport+=delta*2;
- toast(delta?`+${delta*2} énergie sportive (${delta} nouveaux points cardio).`:'Déjà crédité pour ce jour : aucun doublon.');
- if(delta)log(`Cardio ${date} : ${delta} points, +${delta*2} sportifs`);commit();}
+function registerPAI(){const date=$('paiDate')?.value,raw=$('paiAmount')?.value,total=Number(raw),day=new Date(date+'T00:00:00Z');
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')||!Number.isFinite(day.getTime())||day.toISOString().slice(0,10)!==date||!raw?.trim()||!Number.isSafeInteger(total)||total<0||total>1000000){toast('Indique une date et un nombre de PAI valides.');return;}
+ if(date<(state.paiStartDate||paiDateDefault())){toast('Cette date précède les premiers PAI autorisés pour cette partie.');return;}
+ if(date>paiDateDefault()){toast('Les PAI peuvent être saisis jusqu’à hier uniquement.');return;}
+ const prev=state.paiDays?.[date]||0,gain=(total-prev)*3;
+ if(state.sport+gain<0){toast(`Correction impossible : il faut ${-gain} énergie sportive disponible pour retirer les PAI déjà crédités.`);return;}
+ const previousDays=state.paiDays,previousSport=state.sport,previousHistory=[...state.history];
+ state.paiDays={...state.paiDays,[date]:total};state.sport+=gain;
+ if(gain)log(`PAI ${date} : ${total} PAI, ${gain>0?'+':''}${gain} énergie sportive`);
+ if(!saveNow()){state.paiDays=previousDays;state.sport=previousSport;state.history=previousHistory;return;}
+ paiSelectedDate=date;
+ toast(gain?`${gain>0?'+':''}${gain} énergie sportive · PAI enregistrés.`:'PAI enregistrés : aucun double crédit.');
+ renderPanel();updateHUD();}
 function exportSave(){saveNow();let data=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(data),a=document.createElement('a');a.href=url;a.download=`veilleurs-sauvegarde-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),800);toast('Fichier de sauvegarde exporté.');}
 async function importSave(file){if(!file)return;
  try{if(file.size>12000000)throw Error('Fichier trop volumineux.');let imported=JSON.parse(await file.text());if(!validateSave(imported))throw Error('Format non compatible avec cette version.');
@@ -629,12 +651,17 @@ async function importSave(file){if(!file)return;
  state=imported;spaceWildResources(state);migrateSave(state);applyAudioSettings();ui.selection=null;stopPlacing();ui.auto=null;ui.camera.x=state.player.x;ui.camera.y=state.player.y;saveNow();commit();toast('Sauvegarde importée.');}
  catch(e){toast('Import impossible : '+e.message);}
 }
-function handlePanelClick(e){let b=e.target.closest('button[data-action]');if(!b)return;let act=b.dataset.action,k=b.dataset.key;
+function handlePanelClick(e){
+ if(e.target.id==='paiDate'){e.preventDefault();paiCalendarOpen=true;paiCalendarMonth=(paiSelectedDate||paiDateDefault()).slice(0,7);updatePAICalendar();return;}
+ let b=e.target.closest('button[data-action]');if(!b)return;let act=b.dataset.action,k=b.dataset.key;
+ if(act==='pai-calendar'){paiCalendarOpen=!paiCalendarOpen;paiCalendarMonth=(paiSelectedDate||paiDateDefault()).slice(0,7);updatePAICalendar();return;}
+ if(act==='pai-month'){if(b.disabled)return;paiCalendarMonth=k;updatePAICalendar();return;}
+ if(act==='pai-day'){if(b.disabled||k<(state.paiStartDate||paiDateDefault())||k>paiDateDefault())return;paiSelectedDate=k;$('paiDate').value=k;$('paiAmount').value=state.paiDays?.[k]||0;paiCalendarOpen=false;updatePAICalendar();$('paiAmount').focus();return;}
  if(ui.objectMenu!=null&&STATION_ACTIONS.includes(act)){requestStationAction(act,k);return;}
- if(act==='exercise')registerActivity();else if(act==='cardio')registerCardio();else if(act==='craft')craft(k);
+ if(act==='exercise')registerActivity();else if(act==='pai')registerPAI();else if(act==='craft')craft(k);
  else if(act==='cook')cook(k);else if(['nursery','nursery-collect','plant','inoculate','grow','harvest-garden','harvest-mushrooms','harvest-bush','rest'].includes(act))performInstall(act);else if(['deposit','withdraw'].includes(act))transferChest(act,k);else if(act==='quick')toggleQuickTool(k);else if(act==='craft-filter'){ui.craftFilter=k;renderPanel();}else if(act==='equip')equipTool(k);else if(act==='eat')eat(k==='baies_crues'?'baies':k);else if(act==='place')placeStart(k);
  else if(act==='save')saveNow(true);else if(act==='export')exportSave();else if(act==='reset'){
- if(confirm('Recommencer une nouvelle partie ? Cette action effacera ta progression locale. Pense à exporter ta sauvegarde avant.')){state=newState();ui.selection=null;ui.auto=null;stopPlacing();ui.camera.x=state.player.x;ui.camera.y=state.player.y;saveNow();commit();toast('Nouvelle partie commencée.');}}
+ if(confirm('Recommencer une nouvelle partie ? Cette action effacera ta progression locale. Pense à exporter ta sauvegarde avant.')){state=newState();paiSelectedDate=null;ui.selection=null;ui.auto=null;stopPlacing();ui.camera.x=state.player.x;ui.camera.y=state.player.y;saveNow();commit();toast('Nouvelle partie commencée.');}}
 }
 function resize(){dpr=Math.min(window.devicePixelRatio||1,2);W=window.innerWidth;H=window.innerHeight;canvas.width=Math.floor(W*dpr);canvas.height=Math.floor(H*dpr);canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);}
 function project(x,y){let c=ui.camera;return {x:W/2+(x-c.x)*c.zoom,y:H/2+(y-c.y)*c.zoom*c.squash};}
@@ -811,6 +838,7 @@ function initEvents(){window.addEventListener('resize',resize);
  $('panelBody').addEventListener('click',handlePanelClick);
 
  $('panelBody').addEventListener('change',e=>{
+  if(e.target.id==='paiDate'){paiSelectedDate=e.target.value;$('paiAmount').value=state.paiDays?.[paiSelectedDate]||0;paiCalendarMonth=(paiSelectedDate||paiDateDefault()).slice(0,7);updatePAICalendar();}
   if(e.target.id==='mode'){
    if(!MODES[e.target.value])return;state.mode=e.target.value;toast('Mode modifié. Les secondes non converties restent associées à leur mode d’origine.');commit();
   }
