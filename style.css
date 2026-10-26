@@ -45,7 +45,7 @@
 .panel{z-index:12}
 /* Laisser la carte accessible pour le second toucher et la désélection. */
 @media(max-width:680px){.panel.object-menu{top:auto;max-height:45vh}}
-.pai-date-row{display:flex;gap:6px;align-items:stretch}.pai-date-row input{flex:1;min-width:0;cursor:pointer}#paiDate::-webkit-calendar-picker-indicator{display:none}
+.pai-date-row{display:flex}.pai-date-row button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left}.pai-date-row #paiDateLabel{font-size:14px}
 .pai-date-row button,.pai-calendar button{background:#17231b;color:var(--ink);border:1px solid #999b7c78;border-radius:8px;min-height:44px;padding:6px;font-size:12px}
 .pai-calendar{margin:8px 0 12px;padding:8px;border:1px solid #999b7c78;border-radius:10px;background:#121b16}.pai-calendar[hidden]{display:none}
 .pai-calendar-heading{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}.pai-calendar-heading strong{font-size:13px;text-transform:capitalize}.pai-calendar-heading button{width:36px;font-size:22px}

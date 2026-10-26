@@ -309,6 +309,7 @@ function itemRow(key,details,action,actionText,disabled=false,quantity=null){ret
 let paiSelectedDate=null;
 let paiCalendarOpen=false,paiCalendarMonth=null;
 function paiDateDefault(){const d=new Date();d.setDate(d.getDate()-1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function paiDateLabel(date){return date.split('-').reverse().join('/');}
 function paiCalendarMarkup(){
  const selected=paiSelectedDate||paiDateDefault(),month=paiCalendarMonth||selected.slice(0,7),[year,m]=month.split('-').map(Number),first=new Date(year,m-1,1,12),last=new Date(year,m,0,12),earliest=state.paiStartDate||paiDateDefault(),latest=paiDateDefault();
  const adjacent=offset=>{const d=new Date(year,m-1+offset,1,12);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;};
@@ -328,7 +329,7 @@ function renderPanel(){if(!ui.open)return;let title='',html='';
    <button class="btn full" data-action="exercise">Créditer cette activité</button>
    <p class="soft">Secondes reportées dans ce mode : <b>${state.remainders[mode]||0} s</b>.</p>
    <h3>PAI · saisie manuelle</h3>
-   <label for="paiDate">Jour</label><div class="pai-date-row"><input type="date" id="paiDate" min="${state.paiStartDate||paiDateDefault()}" max="${paiDateDefault()}" value="${paiSelectedDate||paiDateDefault()}"><button type="button" id="paiCalendarToggle" data-action="pai-calendar" aria-expanded="${paiCalendarOpen}" aria-controls="paiCalendar">Calendrier</button></div>
+   <label for="paiCalendarToggle">Jour</label><input type="hidden" id="paiDate" value="${paiSelectedDate||paiDateDefault()}"><div class="pai-date-row"><button type="button" id="paiCalendarToggle" data-action="pai-calendar" aria-expanded="${paiCalendarOpen}" aria-controls="paiCalendar"><span id="paiDateLabel">${paiDateLabel(paiSelectedDate||paiDateDefault())}</span><span>Calendrier</span></button></div>
    <div id="paiCalendar" class="pai-calendar" ${paiCalendarOpen?'':'hidden'}>${paiCalendarMarkup()}</div>
    <label for="paiAmount">PAI gagnés ce jour-là</label><input type="number" id="paiAmount" min="0" max="1000000" step="1" value="${state.paiDays?.[paiSelectedDate||paiDateDefault()]||0}" inputmode="numeric">
    <button class="btn secondary full" data-action="pai">Enregistrer les PAI</button>
@@ -652,11 +653,10 @@ async function importSave(file){if(!file)return;
  catch(e){toast('Import impossible : '+e.message);}
 }
 function handlePanelClick(e){
- if(e.target.id==='paiDate'){e.preventDefault();paiCalendarOpen=true;paiCalendarMonth=(paiSelectedDate||paiDateDefault()).slice(0,7);updatePAICalendar();return;}
  let b=e.target.closest('button[data-action]');if(!b)return;let act=b.dataset.action,k=b.dataset.key;
  if(act==='pai-calendar'){paiCalendarOpen=!paiCalendarOpen;paiCalendarMonth=(paiSelectedDate||paiDateDefault()).slice(0,7);updatePAICalendar();return;}
  if(act==='pai-month'){if(b.disabled)return;paiCalendarMonth=k;updatePAICalendar();return;}
- if(act==='pai-day'){if(b.disabled||k<(state.paiStartDate||paiDateDefault())||k>paiDateDefault())return;paiSelectedDate=k;$('paiDate').value=k;$('paiAmount').value=state.paiDays?.[k]||0;paiCalendarOpen=false;updatePAICalendar();$('paiAmount').focus();return;}
+ if(act==='pai-day'){if(b.disabled||k<(state.paiStartDate||paiDateDefault())||k>paiDateDefault())return;paiSelectedDate=k;$('paiDate').value=k;$('paiDateLabel').textContent=paiDateLabel(k);$('paiAmount').value=state.paiDays?.[k]||0;paiCalendarOpen=false;updatePAICalendar();$('paiAmount').focus();return;}
  if(ui.objectMenu!=null&&STATION_ACTIONS.includes(act)){requestStationAction(act,k);return;}
  if(act==='exercise')registerActivity();else if(act==='pai')registerPAI();else if(act==='craft')craft(k);
  else if(act==='cook')cook(k);else if(['nursery','nursery-collect','plant','inoculate','grow','harvest-garden','harvest-mushrooms','harvest-bush','rest'].includes(act))performInstall(act);else if(['deposit','withdraw'].includes(act))transferChest(act,k);else if(act==='quick')toggleQuickTool(k);else if(act==='craft-filter'){ui.craftFilter=k;renderPanel();}else if(act==='equip')equipTool(k);else if(act==='eat')eat(k==='baies_crues'?'baies':k);else if(act==='place')placeStart(k);
@@ -838,7 +838,6 @@ function initEvents(){window.addEventListener('resize',resize);
  $('panelBody').addEventListener('click',handlePanelClick);
 
  $('panelBody').addEventListener('change',e=>{
-  if(e.target.id==='paiDate'){paiSelectedDate=e.target.value;$('paiAmount').value=state.paiDays?.[paiSelectedDate]||0;paiCalendarMonth=(paiSelectedDate||paiDateDefault()).slice(0,7);updatePAICalendar();}
   if(e.target.id==='mode'){
    if(!MODES[e.target.value])return;state.mode=e.target.value;toast('Mode modifié. Les secondes non converties restent associées à leur mode d’origine.');commit();
   }
