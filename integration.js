@@ -187,7 +187,7 @@ const ConstructionTrial=(()=>{
   lastMs=performance.now()-start;lastHero=drawHero();ctx.save();clipOutside();outside.filter(o=>o.y>state.player.y).forEach(drawObject);ctx.restore();FloorPlacement.draw();WallPlacement.draw();RoofPlacement.draw();BushTransplant.drawPreview();CultivationPlacement.drawPreview();ConstructionUI.update();EdgeMarkers.update();
  }
  let lastHero=null;
- render=function(){ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);drawGround();if(openWorld&&ready){worldFrame();return;}
+ render=function(){BoundaryMist.clampCamera();ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);drawGround();BoundaryMist.draw();if(openWorld&&ready){worldFrame();return;}
   // Le cache contient les sprites proches avec leurs profondeurs ; les autres gardent le rendu du jeu.
   const set=new Set(sceneObjects().map(e=>e.o.id));
   const outside=state.objects.filter(o=>!o.trialFixture&&!CultivationPlacement.isFixture(o)&&!set.has(o.id)).sort((a,b)=>a.y-b.y);

@@ -36,6 +36,7 @@ const DirectMapControls=(()=>{
    ui.selection=object.id;drawSelection();if(object.placed)openObjectMenu(object);return;
   }
   if(ui.selection!==null||ui.objectMenu!=null){dismissObjectMenu();return;}
+  if(!BoundaryMist.contains(world.x,world.y))return;
   ui.auto={x:world.x,y:world.y,id:null};
  }
  function pinchStart(){const [a,b]=[...pointers.values()],mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};free();pinch={distance:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y)),zoom:ui.camera.zoom,anchor:unproject(mid.x,mid.y)};gesture=null;}
