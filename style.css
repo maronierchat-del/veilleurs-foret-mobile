@@ -53,3 +53,27 @@
 .pai-calendar .pai-day{min-width:0;min-height:44px;padding:3px 1px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-variant-numeric:tabular-nums}.pai-day>span{font-size:12px}.pai-calendar .pai-day small{font-size:9px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;color:inherit}
 .pai-calendar .has-pai{background:#baab79;color:#151f17;font-weight:700;border-color:#e6cf94}.pai-calendar .pai-day[aria-pressed=true]{outline:2px solid #f0db9c;outline-offset:0}.pai-calendar button:disabled{opacity:.3;cursor:default}.pai-calendar button:focus-visible,.pai-date-row button:focus-visible{outline:2px solid #f0db9c;outline-offset:1px}
 .panel .pai-calendar-legend{font-size:10px;margin:9px 0 0}.pai-calendar-legend span{color:#e6cf94}
+.sport-difficulty{padding:0 0 8px;margin-bottom:4px;border-bottom:1px solid #999b7c55}
+.panel .sport-mode-heading label{margin:0;font-size:12px;color:#b9bba6}
+.sport-mode-heading{display:flex;align-items:center;gap:8px;min-height:32px}
+.sport-mode-heading strong{font-size:16px;color:#eed5a3;line-height:1.2}
+.panel #sportModeInfoToggle{position:relative;flex:0 0 18px;width:18px;height:18px;border:1px solid #999b7c78;border-radius:50%;background:transparent;color:#eed5a3;font:bold 11px Georgia,serif;padding:0}
+.panel #sportModeInfoToggle::after{content:'';position:absolute;inset:-7px}
+.panel #sportMode{display:block;width:100%;height:44px;padding:0;margin:0;border:0;border-radius:0;appearance:none;-webkit-appearance:none;background:transparent;cursor:pointer;accent-color:#d6bc88}
+#sportMode::-webkit-slider-runnable-track{height:5px;background:#b8a16d;border:0;border-radius:4px}
+#sportMode::-moz-range-track{height:5px;background:#b8a16d;border:0;border-radius:4px}
+#sportMode::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:22px;height:22px;margin-top:-8.5px;border:2px solid #eed5a3;border-radius:50%;background:#b8a16d;box-shadow:0 1px 3px #0006}
+#sportMode::-moz-range-thumb{width:18px;height:18px;border:2px solid #eed5a3;border-radius:50%;background:#b8a16d;box-shadow:0 1px 3px #0006}
+#sportMode:focus-visible,#sportModeInfoToggle:focus-visible{outline:2px solid #fff1bf;outline-offset:3px}
+.sport-mode-ticks{display:flex;justify-content:space-between;gap:2px;margin-top:-8px;color:#b9bba6;font-size:9px}
+.sport-mode-ticks span{position:relative;padding-top:3px}.sport-mode-ticks span::before{content:'';position:absolute;top:0;left:50%;width:1px;height:3px;background:#b8a16d}
+.panel #sportModeInfo{font-size:12px;line-height:1.45;margin:10px 0 0;color:#eee5ce}
+.panel #sportModeInfo[hidden]{display:none}
+.panel .sport-pls-option{display:flex;align-items:center;gap:7px;margin:5px 0 0;padding:0;font-size:11px;min-height:32px;cursor:pointer;color:#b9bba6}
+.panel .sport-pls-option input{flex:0 0 17px;width:17px;height:17px;margin:0;accent-color:#d6bc88}
+.sport-pls-option:has(:checked){color:#ffe4a9;font-weight:bold}
+.sport-pls-warning{margin-top:10px;padding:10px;border:1px solid #e1b778;border-radius:8px;background:#3b3021;color:#ffe7ba}
+.sport-pls-warning[hidden]{display:none}.panel .sport-pls-warning p{font-size:12px;line-height:1.45;margin:7px 0 10px}
+.sport-pls-warning>div{display:flex;flex-wrap:wrap;gap:6px}.sport-pls-warning button{min-height:44px;padding:8px;border:1px solid #d6bc88;border-radius:7px;background:#d6bc88;color:#17231b;font-weight:bold}
+.sport-pls-warning button[data-action=sport-pls-cancel]{background:transparent;color:#ffe7ba}
+.panel #sportMode:disabled{opacity:.4;cursor:default}

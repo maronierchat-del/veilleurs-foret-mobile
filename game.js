@@ -321,13 +321,53 @@ function paiCalendarMarkup(){
  return `<div class="pai-calendar-heading"><button type="button" data-action="pai-month" data-key="${adjacent(-1)}" aria-label="Mois précédent" ${month<=earliest.slice(0,7)?'disabled':''}>‹</button><strong aria-live="polite">${first.toLocaleDateString('fr-FR',{month:'long',year:'numeric'})}</strong><button type="button" data-action="pai-month" data-key="${adjacent(1)}" aria-label="Mois suivant" ${month>=latest.slice(0,7)?'disabled':''}>›</button></div><div class="pai-calendar-grid">${['L','M','M','J','V','S','D'].map(d=>`<span class="pai-weekday" aria-hidden="true">${d}</span>`).join('')}${days}</div><p class="pai-calendar-legend"><span>● PAI saisis</span> · — sans saisie</p>`;
 }
 function updatePAICalendar(){const calendar=$('paiCalendar');if(!calendar)return;calendar.hidden=!paiCalendarOpen;calendar.innerHTML=paiCalendarMarkup();$('paiCalendarToggle').setAttribute('aria-expanded',String(paiCalendarOpen));}
+function sportModeDetails(mode){return MODENAMES[mode]+'. '+(mode==='pls'?'Mode exceptionnel pour les périodes de capacités très diminuées. Les déplacements ordinaires comptent. ':'')+'Les secondes reportées restent propres à chaque difficulté. Les PAI restent indépendants : 1 PAI = 3 énergie sportive.';}
+const SPORT_LEVELS=['tres_doux','doux','normal','sportif'];
+let sportRegularMode='normal';
+function plsControlMarkup(){return `<label class="sport-pls-option"><input type="checkbox" id="sportPLS" ${state.mode==='pls'?'checked':''} aria-controls="sportPLSWarning"> Mode PLS exceptionnel</label>
+ <div id="sportPLSWarning" class="sport-pls-warning" hidden role="alert"><strong>Activer le mode PLS ?</strong><p>Ce mode exceptionnel est prévu pour les périodes de capacités très diminuées, notamment maladie, convalescence ou grossesse difficile. Les déplacements ordinaires comptent : 1 point d’énergie pour 5 secondes. Les PAI restent indépendants de la difficulté.</p><div><button type="button" data-action="sport-pls-confirm">Activer le mode PLS</button><button type="button" data-action="sport-pls-cancel">Annuler</button></div></div>`;}
+function refreshSportMode(){
+ const mode=state.mode,name=MODENAMES[mode].split(' (')[0],slider=$('sportMode');
+ if(mode!=='pls')sportRegularMode=mode;
+ slider.value=SPORT_LEVELS.indexOf(sportRegularMode);slider.disabled=mode==='pls';slider.setAttribute('aria-valuetext',MODENAMES[sportRegularMode]);
+ $('sportPLS').checked=mode==='pls';$('sportPLSWarning').hidden=true;
+ $('sportModeName').textContent=name;$('sportModeInfoToggle').setAttribute('aria-label','Détails du mode '+name);
+ $('sportModeInfo').textContent=sportModeDetails(mode);
+ document.querySelector('[data-action="exercise"]').textContent='Créditer l’activité · '+name;
+ $('sportRemainder').textContent=(state.remainders[mode]||0)+' s';
+}
+function applySportDifficulty(next){
+ const previous=state.mode;if(next===previous)return true;
+ if(!Object.hasOwn(MODES,next))return false;
+ state.mode=next;
+ if(!saveNow()){state.mode=previous;return false;}
+ if(next!=='pls')sportRegularMode=next;
+ return true;
+}
+function updateDifficultyControl(){if(ui.tab==='sport')refreshSportMode();else renderPanel();}
+function changeSportDifficulty(control){
+ const previous=state.mode,isSlider=control.id==='sportMode',next=isSlider?SPORT_LEVELS[Number(control.value)]:control.value;
+ const restore=()=>{control.value=isSlider?SPORT_LEVELS.indexOf(sportRegularMode):previous;};
+ if(!Object.hasOwn(MODES,next)){restore();return;}
+ if(isSlider&&previous==='pls'){restore();return;}
+ if(next==='pls'&&previous!=='pls'){restore();$('sportPLSWarning').hidden=false;return;}
+ if(next===previous)return;
+ if(!applySportDifficulty(next)){restore();return;}
+ // Garder les mêmes champs et le calendrier : aucun brouillon n’est reconstruit.
+ if(isSlider)refreshSportMode();else renderPanel();
+}
 function renderPanel(){if(!ui.open)return;let title='',html='';
  if(ui.tab==='sport'){
    title='Énergie sportive';const mode=state.mode;
-   html=`<p>Chaque seconde d’activité compte, quelle que soit l’activité. Difficulté actuelle : <b>${MODENAMES[mode]}</b>. <small>Modifiable dans Paramètres.</small></p>
-   <h3>Enregistrer une activité</h3><div class="form-row"><div><label for="mins">Minutes</label><input type="number" id="mins" min="0" step="1" value="4" inputmode="numeric"></div><div><label for="secs">Secondes</label><input type="number" id="secs" min="0" max="59" step="1" value="0" inputmode="numeric"></div></div>
-   <button class="btn full" data-action="exercise">Créditer cette activité</button>
-   <p class="soft">Secondes reportées dans ce mode : <b>${state.remainders[mode]||0} s</b>.</p>
+   if(mode!=='pls')sportRegularMode=mode;
+   html=`<div class="sport-difficulty">
+   <div class="sport-mode-heading"><label for="sportMode">Difficulté</label><strong id="sportModeName">${MODENAMES[mode].split(' (')[0]}</strong><button type="button" id="sportModeInfoToggle" data-action="sport-mode-info" aria-label="Détails du mode ${MODENAMES[mode].split(' (')[0]}" aria-expanded="false" aria-controls="sportModeInfo">i</button></div>
+   <input type="range" id="sportMode" min="0" max="3" step="1" value="${SPORT_LEVELS.indexOf(sportRegularMode)}" aria-valuetext="${MODENAMES[sportRegularMode]}" ${mode==='pls'?'disabled':''}>
+   <div class="sport-mode-ticks" aria-hidden="true"><span>Très doux</span><span>Doux</span><span>Normal</span><span>Sportif</span></div>
+   <p id="sportModeInfo" hidden>${sportModeDetails(mode)}</p>${plsControlMarkup()}</div>
+   <div class="form-row"><div><label for="mins">Minutes</label><input type="number" id="mins" min="0" step="1" value="4" inputmode="numeric"></div><div><label for="secs">Secondes</label><input type="number" id="secs" min="0" max="59" step="1" value="0" inputmode="numeric"></div></div>
+   <button class="btn full" data-action="exercise">Créditer l’activité · ${MODENAMES[mode].split(' (')[0]}</button>
+   <p class="soft">Secondes reportées dans ce mode : <b id="sportRemainder">${state.remainders[mode]||0} s</b>.</p>
    <h3>PAI · saisie manuelle</h3>
    <label for="paiCalendarToggle">Jour</label><input type="hidden" id="paiDate" value="${paiSelectedDate||paiDateDefault()}"><div class="pai-date-row"><button type="button" id="paiCalendarToggle" data-action="pai-calendar" aria-expanded="${paiCalendarOpen}" aria-controls="paiCalendar"><span id="paiDateLabel">${paiDateLabel(paiSelectedDate||paiDateDefault())}</span><span>Calendrier</span></button></div>
    <div id="paiCalendar" class="pai-calendar" ${paiCalendarOpen?'':'hidden'}>${paiCalendarMarkup()}</div>
@@ -399,8 +439,9 @@ function renderPanel(){if(!ui.open)return;let title='',html='';
  }
  if(ui.tab==='settings'){
    title='Paramètres & sauvegardes';const mode=state.mode;
+   if(mode!=='pls')sportRegularMode=mode;
    html=`<h3>Difficulté sportive</h3><p>Tu peux changer de mode à tout moment, sans perdre ton énergie ni ta progression.</p>
-   <label for="mode">Mode de conversion</label><select id="mode">${Object.entries(MODENAMES).map(([k,n])=>`<option value="${k}" ${mode===k?'selected':''}>${n}</option>`).join('')}</select>
+   <label for="mode">Mode de conversion</label><select id="mode">${mode==='pls'?`<option value="pls" selected disabled>${MODENAMES.pls}</option>`:''}${SPORT_LEVELS.map(k=>`<option value="${k}" ${mode===k?'selected':''}>${MODENAMES[k]}</option>`).join('')}</select>${plsControlMarkup()}
    <div class="notice">${mode==='pls'?'Mode PLS exceptionnel : pour les périodes de capacités très diminuées, y compris maladie, convalescence ou grossesse difficile. Les déplacements ordinaires comptent.':'Les secondes non converties restent séparées par difficulté pour éviter les doubles comptes.'}</div>
    <h3>Agriculture et nature · réglages de test</h3><p class="soft">La croissance continue en temps réel même quand le jeu est fermé. Durées actuellement utilisées (non validées) : pépinière 6 h, carottes 12 h, champignons 12 h, arbustes transplantés 24 h puis 12 h. Repousse des ressources sauvages : délais expérimentaux de 3 à 10 h selon le type. Zone protégée autour des installations : rayon d’essai de trois cases. Les cultures ne meurent jamais et l’absence de sport ne coûte rien.</p>
    <h3>Ambiance sonore</h3><p>Musique d’ambiance fournie avec le projet, diffusée en boucle. Activation et désactivation ici ; le navigateur peut attendre ton premier clic pour démarrer le son. Les effets sonores restent indépendants.</p><label class="sound-option"><input id="musicToggle" type="checkbox" ${state.audio?.music?'checked':''}> Musique d’ambiance</label><label class="sound-option"><input id="sfxToggle" type="checkbox" ${state.audio?.sfx?'checked':''}> Effets sonores</label>
@@ -654,6 +695,9 @@ async function importSave(file){if(!file)return;
 }
 function handlePanelClick(e){
  let b=e.target.closest('button[data-action]');if(!b)return;let act=b.dataset.action,k=b.dataset.key;
+ if(act==='sport-mode-info'){const details=$('sportModeInfo');details.hidden=!details.hidden;b.setAttribute('aria-expanded',String(!details.hidden));return;}
+ if(act==='sport-pls-confirm'){applySportDifficulty('pls');updateDifficultyControl();$('sportPLS').focus();return;}
+ if(act==='sport-pls-cancel'){$('sportPLSWarning').hidden=true;$('sportPLS').checked=state.mode==='pls';$('sportPLS').focus();return;}
  if(act==='pai-calendar'){paiCalendarOpen=!paiCalendarOpen;paiCalendarMonth=(paiSelectedDate||paiDateDefault()).slice(0,7);updatePAICalendar();return;}
  if(act==='pai-month'){if(b.disabled)return;paiCalendarMonth=k;updatePAICalendar();return;}
  if(act==='pai-day'){if(b.disabled||k<(state.paiStartDate||paiDateDefault())||k>paiDateDefault())return;paiSelectedDate=k;$('paiDate').value=k;$('paiDateLabel').textContent=paiDateLabel(k);$('paiAmount').value=state.paiDays?.[k]||0;paiCalendarOpen=false;updatePAICalendar();$('paiAmount').focus();return;}
@@ -837,9 +881,15 @@ function initEvents(){window.addEventListener('resize',resize);
  $('zoomMinus').addEventListener('click',()=>setZoom(ui.camera.zoom-.1));
  $('panelBody').addEventListener('click',handlePanelClick);
 
+ $('panelBody').addEventListener('input',e=>{if(e.target.id==='sportMode')changeSportDifficulty(e.target);});
  $('panelBody').addEventListener('change',e=>{
-  if(e.target.id==='mode'){
-   if(!MODES[e.target.value])return;state.mode=e.target.value;toast('Mode modifié. Les secondes non converties restent associées à leur mode d’origine.');commit();
+  if(e.target.id==='sportPLS'){
+   if(e.target.checked&&state.mode!=='pls'){e.target.checked=false;$('sportPLSWarning').hidden=false;}
+   else if(!e.target.checked&&state.mode==='pls'){applySportDifficulty(sportRegularMode);updateDifficultyControl();}
+   return;
+  }
+  if(e.target.id==='mode'||e.target.id==='sportMode'){
+   changeSportDifficulty(e.target);
   }
   if(e.target.id==='importFile')importSave(e.target.files?.[0]);
   if(e.target.id==='musicToggle'||e.target.id==='sfxToggle'){if(!state.audio)state.audio={music:false,sfx:false};state.audio[e.target.id==='musicToggle'?'music':'sfx']=e.target.checked;applyAudioSettings();sound('click');commit();}
