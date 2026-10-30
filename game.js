@@ -61,7 +61,7 @@ for(const [k,v] of Object.entries(FOOD))LABEL[k]=v.name;
 const MODES={pls:5,tres_doux:10,doux:15,normal:30,sportif:60};
 const MODENAMES={pls:'PLS — exceptionnel (1 pt / 5 s)',tres_doux:'Très doux (1 pt / 10 s)',doux:'Doux (1 pt / 15 s)',normal:'Normal (1 pt / 30 s)',sportif:'Sportif (1 pt / 60 s)'};
 const COLLECT={twig:{name:'Brindilles',item:'bois',qty:3,cost:1},grass:{name:'Touffe d’herbe',item:'fibres',qty:4,cost:1},pebbles:{name:'Cailloux',item:'pierre',qty:3,cost:1},tree:{name:'Arbre',item:'bois',qty:8,cost:2,tool:'hache'},rock:{name:'Rocher',item:'pierre',qty:8,cost:2,tool:'pioche'},carrot:{name:'Carotte sauvage',item:'carotte',qty:1,cost:1},mushroom:{name:'Champignon sauvage',item:'champignon',qty:1,cost:1},bush:{name:'Arbuste à baies',item:'baies',qty:2,cost:1}};
-const SAVE_KEY='veilleurs_construction_test_etape1_v1';
+const SAVE_KEY=new URLSearchParams(location.search).has('maison-test')?'veilleurs_alpha2_maison_test_v1':'veilleurs_construction_test_etape1_v1';
 const WORLD={width:3600,height:3200,centerX:1800,centerY:1600};
 // DURÉES PROVISOIRES de la maquette : aucune n'est déclarée validée.
 const TEST_HOURS={pepiniere:6,potager:12,champignonniere:12,arbusteFirst:24,arbuste:12,wildBush:12};
@@ -411,9 +411,9 @@ function renderPanel(){if(!ui.open)return;let title='',html='';
   if(!o){title='Installation';html='<p>Cette installation n’est plus disponible.</p>';}
   else {title=displayName(o); const btn=(action,label,disabled=false)=>`<button class="btn full ${action==='grow'?'secondary':''}" data-action="${action}" ${disabled?'disabled':''}>${label}</button>`;
    if(o.type==='pepiniere'){
-    if(o.stage===2){html='<p>Portes ouvertes : les 4 jeunes plants sont prêts.</p>'+btn('nursery-collect','Récupérer les 4 jeunes plants');}
+    if(o.stage===2){html='<p>Portes ouvertes : les 4 jeunes plants sont prêts.</p>'+btn('nursery-collect','Récupérer les 4 jeunes plants · 1 énergie',state.sport<1);}
     else if(o.stage===1){html=`<p>Production en cours, portes fermées. ${timeRemaining(o.readyAt)}</p>`;}
-    else {html='<p>Pépinière vide, portes fermées. 1 carotte + 2 énergie → 4 jeunes plants.</p>'+btn('nursery','Lancer la production · 2 énergie',amount('carotte')<1||state.sport<2-Math.min(state.cul,1));}
+    else {html='<p>Pépinière vide, portes fermées. 1 carotte + 1 énergie pour lancer la culture, puis 1 énergie pour récolter les 4 jeunes plants.</p>'+btn('nursery','Lancer la production · 1 énergie',amount('carotte')<1||state.sport<1);}
    }else if(o.type==='potager'){
     if(!o.stage){html='<p>Parcelle vide. Repiquer les 4 jeunes plants issus de la pépinière.</p>'+btn('plant','Planter 4 jeunes plants · 1 énergie',amount('jeunes_plants')<4||state.sport<1);}
     else if(o.stage===1){html=`<p>Jeunes plants en croissance. ${timeRemaining(o.readyAt)}</p>`;}
@@ -443,7 +443,7 @@ function renderPanel(){if(!ui.open)return;let title='',html='';
    html=`<h3>Difficulté sportive</h3><p>Tu peux changer de mode à tout moment, sans perdre ton énergie ni ta progression.</p>
    <label for="mode">Mode de conversion</label><select id="mode">${mode==='pls'?`<option value="pls" selected disabled>${MODENAMES.pls}</option>`:''}${SPORT_LEVELS.map(k=>`<option value="${k}" ${mode===k?'selected':''}>${MODENAMES[k]}</option>`).join('')}</select>${plsControlMarkup()}
    <div class="notice">${mode==='pls'?'Mode PLS exceptionnel : pour les périodes de capacités très diminuées, y compris maladie, convalescence ou grossesse difficile. Les déplacements ordinaires comptent.':'Les secondes non converties restent séparées par difficulté pour éviter les doubles comptes.'}</div>
-   <h3>Agriculture et nature · réglages de test</h3><p class="soft">La croissance continue en temps réel même quand le jeu est fermé. Durées actuellement utilisées (non validées) : pépinière 6 h, carottes 12 h, champignons 12 h, arbustes transplantés 24 h puis 12 h. Repousse des ressources sauvages : délais expérimentaux de 3 à 10 h selon le type. Zone protégée autour des installations : rayon d’essai de trois cases. Les cultures ne meurent jamais et l’absence de sport ne coûte rien.</p>
+   <h3>Agriculture et nature</h3><p class="soft">Dormir sur une paillasse fait avancer chaque culture d’une étape. Une nuit prépare les jeunes plants, les carottes et les champignons ; un jeune arbuste demande une nuit pour devenir adulte, puis une autre pour ses baies. Les buissons cueillis retrouvent leurs baies chaque nuit. La moitié des autres ressources récoltées revient par type, arrondie au supérieur, hors des constructions. Attendre ou fermer le jeu ne fait plus pousser les cultures. Les récoltes prêtes restent disponibles, les cultures ne meurent jamais et l’absence de sport ne coûte rien.</p>
    <h3>Ambiance sonore</h3><p>Musique d’ambiance fournie avec le projet, diffusée en boucle. Activation et désactivation ici ; le navigateur peut attendre ton premier clic pour démarrer le son. Les effets sonores restent indépendants.</p><label class="sound-option"><input id="musicToggle" type="checkbox" ${state.audio?.music?'checked':''}> Musique d’ambiance</label><label class="sound-option"><input id="sfxToggle" type="checkbox" ${state.audio?.sfx?'checked':''}> Effets sonores</label>
    <h3>Sauvegardes</h3><p>Ta progression est enregistrée automatiquement. Les mises à jour compatibles conservent ta partie. Exporte aussi un fichier de secours.</p>
    <button class="btn full" data-action="save">Enregistrer maintenant</button><button class="btn full secondary" data-action="export">Exporter la partie (.json)</button>
@@ -512,7 +512,7 @@ function updateNatureAndCrops(){
 }
 function gather(obj){let r=COLLECT[obj.type];if(!r)return;
  if(r.tool&&!hasTool(r.tool)){toast(`Équipe ${LABEL[r.tool].toLowerCase()} depuis le sac.`);return;}
- if(obj.type==='bush'&&obj.harvested){toast('Cet arbuste a déjà été cueilli. Repousse encore à définir.');return;}
+ if(obj.type==='bush'&&obj.harvested){toast('Les baies reviendront après une nuit.');return;}
  if(!pay(r.cost))return;
  sound('gather');
  give(r.item,r.qty);log(`Récolte : ${r.qty} ${LABEL[r.item].toLowerCase()}`);
@@ -535,11 +535,11 @@ function pickup(obj){if(!state.objects.includes(obj)||!obj.placed)return;const t
 function performInstall(action){
  const o=state.objects.find(v=>v.id===ui.stationId&&v.placed);if(!o)return;
  if(action==='nursery'&&o.type==='pepiniere'&&!o.stage){
-  if(!amount('carotte'))return toast('Il te faut une carotte.');if(!pay(2))return;
+  if(!amount('carotte'))return toast('Il te faut une carotte.');if(!pay(1))return;
   give('carotte',-1);o.stage=1;nextReady(o,TEST_HOURS.pepiniere);
   sound('craft');toast('Pépinière en production : portes fermées.');
  }else if(action==='nursery-collect'&&o.type==='pepiniere'&&o.stage===2){
-  give('jeunes_plants',4);o.stage=0;o.readyAt=null;sound('gather');toast('4 jeunes plants récupérés.');
+  if(!pay(1))return;give('jeunes_plants',4);o.stage=0;o.readyAt=null;sound('gather');toast('4 jeunes plants récupérés.');
  }else if(action==='plant'&&o.type==='potager'&&!o.stage){
   if(amount('jeunes_plants')<4)return toast('Il te faut 4 jeunes plants.');if(!pay(1))return;
   give('jeunes_plants',-4);o.stage=1;nextReady(o,TEST_HOURS.potager);sound('place');toast('4 jeunes plants repiqués.');
@@ -582,12 +582,10 @@ function spriteFor(o){if(!o.placed)return o.type==='bush'&&o.harvested?'bush_emp
 function displayName(o){return o.placed?(o.type==='arbuste'?'Arbuste transplanté':CRAFT[o.type]?.name||o.type):COLLECT[o.type]?.name||o.type;}
 function drawSelection(){const el=$('selection'),o=state.objects.find(v=>v.id===ui.selection);
  if(!o){el.hidden=true;return;}
+ if(o.placed){el.hidden=true;el.replaceChildren();return;}
  el.hidden=false;let d=Math.hypot(state.player.x-o.x,state.player.y-o.y),near=d<118;
  let note=near?'À portée.':ui.auto?.id===o.id?'En approche…':'',actions='';
- if(o.placed){
-  if(['pepiniere','potager','champignonniere','arbuste','coffre','etabli','paillasse'].includes(o.type))actions+=`<button data-object-action="open">Interagir</button>`;
-  actions+=`<button data-object-action="pickup">Récupérer avec ${o.type==='arbuste'?'la pelle':'le marteau'}</button>`;
- }else{
+ {
   const r=COLLECT[o.type];
   if(o.type==='bush'&&o.harvested)actions+=`<div class="notice">${timeRemaining(o.readyAt)}</div>`;
   else actions+=`<button data-object-action="gather">${r.tool?'Exploiter':'Ramasser / cueillir'} · ${r.cost} énergie</button>`;
@@ -649,7 +647,6 @@ function placementPoint(key,x,y){
 }
 function tryPlace(worldX,worldY){let key=ui.placing;if(!key)return;
  let {x,y}=placementPoint(key,worldX,worldY);
- if(Math.hypot(x-state.player.x,y-state.player.y)>255){toast('Approche-toi de l’emplacement pour construire.');return;}
  if(x<90||y<90||x>WORLD.width-90||y>WORLD.height-90){toast('Emplacement hors de la région accessible.');return;}
  const flat=['sol','chemin_terre','chemin_pierre','toit'].includes(key);
  const walls=['mur','porte','fenetre','cloture','portillon'];
@@ -701,6 +698,7 @@ function handlePanelClick(e){
  if(act==='pai-calendar'){paiCalendarOpen=!paiCalendarOpen;paiCalendarMonth=(paiSelectedDate||paiDateDefault()).slice(0,7);updatePAICalendar();return;}
  if(act==='pai-month'){if(b.disabled)return;paiCalendarMonth=k;updatePAICalendar();return;}
  if(act==='pai-day'){if(b.disabled||k<(state.paiStartDate||paiDateDefault())||k>paiDateDefault())return;paiSelectedDate=k;$('paiDate').value=k;$('paiDateLabel').textContent=paiDateLabel(k);$('paiAmount').value=state.paiDays?.[k]||0;paiCalendarOpen=false;updatePAICalendar();$('paiAmount').focus();return;}
+ if(act==='craft'&&k==='portail'){craft(k);return;}
  if(ui.objectMenu!=null&&STATION_ACTIONS.includes(act)){requestStationAction(act,k);return;}
  if(act==='exercise')registerActivity();else if(act==='pai')registerPAI();else if(act==='craft')craft(k);
  else if(act==='cook')cook(k);else if(['nursery','nursery-collect','plant','inoculate','grow','harvest-garden','harvest-mushrooms','harvest-bush','rest'].includes(act))performInstall(act);else if(['deposit','withdraw'].includes(act))transferChest(act,k);else if(act==='quick')toggleQuickTool(k);else if(act==='craft-filter'){ui.craftFilter=k;renderPanel();}else if(act==='equip')equipTool(k);else if(act==='eat')eat(k==='baies_crues'?'baies':k);else if(act==='place')placeStart(k);
@@ -753,7 +751,7 @@ function objectAt(px,py){
  return matches[index];
 }
 function canWalk(x,y){if(x<55||x>WORLD.width-55||y<55||y>WORLD.height-55)return false;
- for(let o of state.objects){if(o.trialFixture||o.placed&&['etabli','arbuste','feu','marmite','pepiniere','potager','champignonniere'].includes(o.type)||!['tree','orties','rock','bush','arbuste','feu','etabli','coffre','marmite','pepiniere','champignonniere','potager'].includes(o.type))continue;
+ for(let o of state.objects){if(o.trialFixture||MalleTrial.isFixture(o)||o.placed&&['etabli','arbuste','feu','marmite','pepiniere','potager','champignonniere','portail'].includes(o.type)||!['tree','orties','rock','bush','arbuste','feu','etabli','coffre','marmite','pepiniere','champignonniere','potager'].includes(o.type))continue;
  let radius=['tree','orties'].includes(o.type)?35:o.type==='rock'?30:o.type==='bush'?24:23;
  if(Math.hypot(o.x-x,o.y-y)<radius+12)return false;
  }return true;}

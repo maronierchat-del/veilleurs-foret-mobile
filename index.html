@@ -7,16 +7,19 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Les Veilleurs" />
-  <link rel="manifest" href="manifest.webmanifest" />
+  
   <link rel="apple-touch-icon" href="assets/interface/jeu-180.png" />
-  <title>Les Veilleurs de la Forêt</title>
-  <link rel="stylesheet" href="style.css?v=installation-mobile-1" /><link rel="stylesheet" href="integration.css?v=installation-mobile-1" /><link rel="stylesheet" href="construction-interface.css?v=installation-mobile-1" /><link rel="stylesheet" href="inventaire.css?v=installation-mobile-1" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <title>Alpha 2 · Les Veilleurs de la Forêt</title>
+  <link rel="stylesheet" href="style.css?v=alpha2-20261030" /><link rel="stylesheet" href="integration.css?v=alpha2-20261030" /><link rel="stylesheet" href="construction-interface.css?v=alpha2-20261030" /><link rel="stylesheet" href="inventaire.css?v=alpha2-20261030" />
+  <link rel="stylesheet" href="preparation-expedition.css?v=alpha2-20261030">
+  <link rel="stylesheet" href="sommeil.css?v=alpha2-20261030">
 </head>
 <body>
   <svg width="0" height="0" aria-hidden="true" style="position:absolute;overflow:hidden"><defs><symbol id="energy-bolt" viewBox="0 0 16 20"><path d="M9 1 2 11h5l-1 8 8-11H9Z" /></symbol></defs></svg>
   <canvas id="scene" aria-label="Carte de la première région. Déplacement avec ZQSD, WASD ou les flèches, ou les commandes tactiles."></canvas>
   <header class="topbar">
-    <div class="brand"><span class="brand-mark">✧</span><div><strong>Les Veilleurs de la Forêt</strong><small>Copie de test · maison du laboratoire</small></div></div>
+    <div class="brand"><span class="brand-mark">✧</span><div><strong>Les Veilleurs de la Forêt</strong><small>Alpha 2</small></div></div>
     <div class="balances">
       <div class="balance sport-counter"><span>Sport</span><span class="energy-value"><strong id="sportBalance">0</strong><svg class="energy-symbol" aria-hidden="true" focusable="false"><use href="#energy-bolt" /></svg></span><button type="button" id="openSport" aria-label="Ajouter une activité sportive" title="Enregistrer une activité">＋</button></div>
       <div class="balance"><span>Cuisine</span><span class="energy-value"><strong id="foodBalance">0</strong><svg class="energy-symbol" aria-hidden="true" focusable="false"><use href="#energy-bolt" /></svg></span></div>
@@ -55,41 +58,50 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <div class="loading" id="loading">La vallée prend forme… <span id="loadProgress"></span></div>
   <audio id="forestMusic" src="assets/audio/forest_ambience.mp3" loop preload="auto" aria-hidden="true"></audio>
-  <script src="hitmasks.js?v=installation-mobile-1" defer></script>
-  <script src="construction/geometry.js?v=installation-mobile-1" defer></script>
-  <script src="construction/plancher.js?v=installation-mobile-1" defer></script>
-  <script src="construction/murs.js?v=installation-mobile-1" defer></script>
-  <script src="construction/toit-model.js?v=installation-mobile-1" defer></script>
-  <script src="construction/toit-render.js?v=installation-mobile-1" defer></script>
-  <script src="construction/porte.js?v=installation-mobile-1" defer></script>
-  <script src="construction/murs-interieur.js?v=installation-mobile-1" defer></script>
-  <script src="construction/model.js?v=installation-mobile-1" defer></script>
-  <script src="construction/portes.js?v=installation-mobile-1" defer></script>
-  <script src="construction/profondeurs.js?v=installation-mobile-1" defer></script>
-  <script src="construction/masquage.js?v=installation-mobile-1" defer></script>
-  <script src="game.js?v=installation-mobile-1" defer></script>
-  <script src="navigation.js?v=installation-mobile-1" defer></script>
-  <script src="zone-construction.js?v=installation-mobile-1" defer></script>
-  <script src="construction/tuiles.js?v=installation-mobile-1" defer></script>
-  <script src="reperes-carte.js?v=installation-mobile-1" defer></script>
-  <script src="sols-libres.js?v=installation-mobile-1" defer></script>
-  <script src="murs-libres.js?v=installation-mobile-1" defer></script>
-  <script src="toits-libres.js?v=installation-mobile-1" defer></script>
-  <script src="commandes-carte.js?v=installation-mobile-1" defer></script>
-  <script src="gestes-carte.js?v=installation-mobile-1" defer></script>
-  <script src="construction-interface.js?v=installation-mobile-1" defer></script>
-  <script src="interface-jeu.js?v=installation-mobile-1" defer></script>
-  <script src="arbustes.js?v=installation-mobile-1" defer></script>
-  <script src="cultures.js?v=installation-mobile-1" defer></script>
-  <script src="cultures-interface.js?v=installation-mobile-1" defer></script>
-  <script src="sauvegardes.js?v=installation-mobile-1" defer></script>
-  <script src="recuperation-outils.js?v=installation-mobile-1" defer></script>
-  <script src="inventaire.js?v=installation-mobile-1" defer></script>
-  <script src="orties-masque.js?v=installation-mobile-1" defer></script>
-  <script src="orties.js?v=installation-mobile-1" defer></script>
-  <script src="paysage.js?v=installation-mobile-1" defer></script>
-  <script src="brume-frontiere.js?v=installation-mobile-1" defer></script>
-  <script src="installation.js?v=installation-mobile-1" defer></script>
-  <script src="integration.js?v=installation-mobile-1" defer></script>
+  <script src="hitmasks.js?v=alpha2-20261030" defer></script>
+  <script src="construction/geometry.js?v=alpha2-20261030" defer></script>
+  <script src="construction/plancher.js?v=alpha2-20261030" defer></script>
+  <script src="construction/murs.js?v=alpha2-20261030" defer></script>
+  <script src="construction/toit-model.js?v=alpha2-20261030" defer></script>
+  <script src="construction/toit-render.js?v=alpha2-20261030" defer></script>
+  <script src="construction/porte.js?v=alpha2-20261030" defer></script>
+  <script src="construction/murs-interieur.js?v=alpha2-20261030" defer></script>
+  <script src="construction/model.js?v=alpha2-20261030" defer></script>
+  <script src="construction/portes.js?v=alpha2-20261030" defer></script>
+  <script src="construction/profondeurs.js?v=alpha2-20261030" defer></script>
+  <script src="construction/masquage.js?v=alpha2-20261030" defer></script>
+  <script src="game.js?v=alpha2-20261030" defer></script>
+  <script src="navigation.js?v=alpha2-20261030" defer></script>
+  <script src="zone-construction.js?v=alpha2-20261030" defer></script>
+  <script src="construction/tuiles.js?v=alpha2-20261030" defer></script>
+  <script src="reperes-carte.js?v=alpha2-20261030" defer></script>
+  <script src="sols-libres.js?v=alpha2-20261030" defer></script>
+  <script src="murs-libres.js?v=alpha2-20261030" defer></script>
+  <script src="toits-libres.js?v=alpha2-20261030" defer></script>
+  <script src="commandes-carte.js?v=alpha2-20261030" defer></script>
+  <script src="gestes-carte.js?v=alpha2-20261030" defer></script>
+  <script src="construction-interface.js?v=alpha2-20261030" defer></script>
+  <script src="interface-jeu.js?v=alpha2-20261030" defer></script>
+  <script src="cuisine-interface.js?v=alpha2-20261030" defer></script>
+  <script src="arbustes.js?v=alpha2-20261030" defer></script>
+  <script src="cultures.js?v=alpha2-20261030" defer></script>
+  <script src="cultures-interface.js?v=alpha2-20261030" defer></script>
+  <script src="sauvegardes.js?v=alpha2-20261030" defer></script>
+  <script src="recuperation-outils.js?v=alpha2-20261030" defer></script>
+  <script src="inventaire.js?v=alpha2-20261030" defer></script>
+  <script src="orties-masque.js?v=alpha2-20261030" defer></script>
+  <script src="orties.js?v=alpha2-20261030" defer></script>
+  <script src="paysage.js?v=alpha2-20261030" defer></script>
+  <script src="brume-frontiere.js?v=alpha2-20261030" defer></script>
+  
+  <script src="installation.js?v=alpha2-20261030" defer></script>
+  <script src="maison-test.js?v=alpha2-20261030" defer></script>
+  <script src="portail.js?v=alpha2-20261030" defer></script>
+  <script src="preparation-expedition.js?v=alpha2-20261030" defer></script>
+  <script src="essai-cuisine.js?v=alpha2-20261030" defer></script>
+  <script src="paillasse.js?v=alpha2-20261030" defer></script>
+  <script src="sommeil.js?v=alpha2-20261030" defer></script>
+  <script src="nuits-cultures.js?v=alpha2-20261030" defer></script>
+  <script src="integration.js?v=alpha2-20261030" defer></script>
 </body>
 </html>

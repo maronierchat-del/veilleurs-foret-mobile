@@ -7,6 +7,13 @@ const BoundaryMist=(()=>{
  function hash(x,y){let h=Math.imul(x,374761393)^Math.imul(y,668265263)^261026;h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967295;}
  function noise(x,y){const ix=Math.floor(x),iy=Math.floor(y),a=smooth(x-ix),b=smooth(y-iy),n=hash(ix,iy),m=hash(ix+1,iy),p=hash(ix,iy+1),q=hash(ix+1,iy+1);return n+(m-n)*a+(p-n)*b+(n-m-p+q)*a*b;}
  function contains(x,y){return BuildingArea.tools||x>=edge&&y>=edge&&x<=WORLD.width-edge&&y<=WORLD.height-edge;}
+ function interact(x,y){
+  if(BuildingArea.tools||opacity(x,y)<.25)return false;
+  const hasTrunk=state.objects.some(o=>o.placed&&o.type==='coffre');
+  ui.auto=null;dismissObjectMenu();
+  toast(hasTrunk?'Préparez une expédition dans votre malle pour découvrir ce qui se cache au-delà de la brume.':'Construisez une malle d’expédition pour découvrir ce qui se cache au-delà de la brume.');
+  return true;
+ }
  function bounds(){
   const c=ui.camera,z=c.zoom,k=c.squash;
   const header=$('resourceStrip')?.getBoundingClientRect().bottom||110;
@@ -39,5 +46,5 @@ const BoundaryMist=(()=>{
   }
   ctx.save();ctx.imageSmoothingEnabled=true;ctx.drawImage(layer,W/2+(origin.x-c.x)*z,H/2+(origin.y-c.y)*z*k,layer.width*scale,layer.height*scale);ctx.restore();
  }
- return {draw,clampCamera,bounds,contains,opacity,get metrics(){return {lastBuildMs,builds};}};
+ return {draw,clampCamera,bounds,contains,opacity,interact,get metrics(){return {lastBuildMs,builds};}};
 })();

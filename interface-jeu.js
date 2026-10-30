@@ -26,14 +26,13 @@ const GameInterface=(()=>{
   const originalStopPlacing=stopPlacing;
   stopPlacing=function(){originalStopPlacing();$('sceneHint').textContent=hint;};
   const originalSelection=drawSelection;
-  drawSelection=function(){originalSelection();const o=state.objects.find(o=>o.id===ui.selection);if(!o)return;
+  drawSelection=function(){const o=state.objects.find(o=>o.id===ui.selection);if(o?.placed&&o.type==='coffre'){$('selection').hidden=true;$('selection').replaceChildren();return;}originalSelection();if(!o)return;
    if(o.placed&&o.type==='arbuste'){
     const el=$('selection'),heading=document.createElement('strong');heading.className='resource-summary';
+    el.hidden=false;
     const name=document.createElement('span');name.textContent=displayName(o);heading.append(name);el.replaceChildren(heading);
     if(o.stage===3){const cost=document.createElement('span');cost.className='resource-cost';cost.setAttribute('aria-label','1 point d’énergie');cost.innerHTML='1<svg class="energy-symbol" aria-hidden="true" focusable="false"><use href="#energy-bolt" /></svg>';heading.append(cost);}
-    else {const target=o.readyAt?(o.stage===1?o.readyAt-TEST_HOURS.arbusteFirst*HOUR/2:o.readyAt):null,p=document.createElement('p');
-     if(target){const minutes=Math.max(0,Math.ceil((target-Date.now())/60000)),h=Math.floor(minutes/60),m=minutes%60;p.textContent='Prochaine étape : '+(minutes?`${h?h+' h ':''}${m?m+' min':''}`.trim():'imminente');}
-     else p.textContent='Croissance en cours.';el.append(p);
+    else {const p=document.createElement('p');p.textContent=NightGrowth.label(o);el.append(p);
     }return;
    }
    if(o.placed)return;
@@ -56,28 +55,34 @@ const GameInterface=(()=>{
   setTab=function(tab){$('panel').classList.toggle('craft-panel',tab==='craft');FloorPlacement.stop();WallPlacement.stop();RoofPlacement.stop();stopPlacing();originalSetTab(tab);};
   const originalRenderPanel=renderPanel;
   renderPanel=function(){
+   const preparation=typeof ExpeditionPrep!=='undefined'&&typeof MalleTrial!=='undefined'&&ui.tab==='installation'&&state.objects.some(o=>o.id===ui.stationId&&MalleTrial.isFixture(o));
+   $('panel').classList.toggle('expedition-panel',preparation);if($('prepHeaderLegend'))$('prepHeaderLegend').hidden=!preparation;
    $('panel').classList.toggle('craft-panel',ui.tab==='craft');
    if(ui.tab==='craft')fitCraftPanel();
    if(ui.tab==='craft'&&viewedWorkbench()){
     document.querySelector('.eyebrow').textContent='ÉTABLI';
     $('panelTitle').innerHTML='Fabrication · <span class="workbench-energy" aria-label="4 points d’énergie">4 <svg class="energy-symbol" aria-hidden="true"><use href="#energy-bolt" /></svg></span>';
-    const groups={outil:'Outils',installation:'Production',construction:'Construction'};
+    const groups={outil:'Outils',installation:'Production',construction:'Construction',meuble:'Mobilier'};
+    const catalogue={outil:['hache','pioche','marteau','pelle'],installation:['feu','etabli','marmite','potager','pepiniere','champignonniere'],construction:['sol','mur','porte','fenetre','toit'],meuble:['coffre','paillasse','portail']};
     if(!Object.hasOwn(groups,ui.craftFilter))ui.craftFilter='outil';
-    const deferred=new Set(['cloture','portillon','paillasse','lit','coffre']);
     const plurals={sol:'sols en bois',mur:'murs en bois',porte:'portes en bois',fenetre:'fenêtres',toit:'toitures en chaume'};
     let html='<div class="craft-filters">'+Object.entries(groups).map(([key,name])=>'<button type="button" data-action="craft-filter" data-key="'+key+'" class="'+(ui.craftFilter===key?'current':'')+'">'+name+'</button>').join('')+'</div>';
-    for(const [key,r]of Object.entries(CRAFT)){
-     if(r.kind!==ui.craftFilter||deferred.has(key)||r.kind==='meuble')continue;
-     const name=r.qty?r.qty+' '+(plurals[key]||r.name):r.name;
-     html+='<div class="item-row">'+rowImage(r.spr)+'<div class="item-info"><strong>'+name+'</strong><small>'+fmtMaterials(r.materials)+(key==='toit'?'<br>Forme choisie à la pose':'')+'</small></div><button type="button" data-action="craft" data-key="'+key+'" '+(!canCraft(key)?'disabled':'')+'>Fabriquer</button></div>';
+    for(const key of catalogue[ui.craftFilter]){
+     const r=CRAFT[key];if(!r)continue;
+     const name=key==='coffre'?'Malle d’expédition':key==='paillasse'?'Lit (paillasse)':r.qty?r.qty+' '+(plurals[key]||r.name):r.name;
+     if(key==='coffre'){
+      html+='<div class="item-row" data-workbench-item="coffre">'+rowImage(r.spr)+'<div class="item-info"><strong>'+name+'</strong><small>Fabrication à raccorder</small></div><button type="button" data-action="craft" data-key="coffre" disabled>Fabriquer</button></div>';continue;
+     }
+     html+='<div class="item-row" data-workbench-item="'+key+'">'+rowImage(r.spr)+'<div class="item-info"><strong>'+name+'</strong><small>'+fmtMaterials(r.materials)+(key==='toit'?'<br>Forme choisie à la pose':'')+'</small></div><button type="button" data-action="craft" data-key="'+key+'" '+(!canCraft(key)?'disabled':'')+'>Fabriquer</button></div>';
     }
     $('panelBody').innerHTML=html;return;
    }
    if(ui.tab==='craft'&&!viewedWorkbench()){
-    document.querySelector('.eyebrow').textContent='FABRICATION';$('panelTitle').textContent='Fabrication à la main';
-    $('panelBody').innerHTML=['marteau','pioche','hache','feu','etabli'].map(key=>{const r=CRAFT[key];return '<div class="item-row">'+rowImage(key)+'<div class="item-info"><strong>'+r.name+'</strong><small>'+fmtMaterials(r.materials)+' · 4 énergie</small></div><button data-action="craft" data-key="'+key+'" '+(!canCraft(key)?'disabled':'')+'>Fabriquer</button></div>';}).join('');return;
+    document.querySelector('.eyebrow').textContent='FABRICATION À LA MAIN';
+    $('panelTitle').innerHTML='Fabrication · <span class="workbench-energy" aria-label="4 points d’énergie">4 <svg class="energy-symbol" aria-hidden="true"><use href="#energy-bolt" /></svg></span>';
+    $('panelBody').innerHTML=['marteau','pioche','hache','feu','etabli','portail'].filter(key=>CRAFT[key]).map(key=>{const r=CRAFT[key];return '<div class="item-row">'+rowImage(key)+'<div class="item-info"><strong>'+r.name+'</strong><small>'+fmtMaterials(r.materials)+'</small></div><button data-action="craft" data-key="'+key+'" '+(!canCraft(key)?'disabled':'')+'>Fabriquer</button></div>';}).join('');return;
    }
-   if(ui.tab!=='construction'){const value=originalRenderPanel();if(ui.tab==='settings')$('panelBody').insertAdjacentHTML('afterbegin',GameInstall.markup());document.querySelector('.eyebrow').textContent={inventory:'INVENTAIRE',craft:'FABRICATION',settings:'PARAMÈTRES',sport:'ACTIVITÉ'}[ui.tab]||'INSTALLATION';return value;}
+   if(ui.tab!=='construction'){const value=originalRenderPanel();if(ui.tab==='settings')$('panelBody').insertAdjacentHTML('afterbegin',GameInstall.markup());document.querySelector('.eyebrow').textContent=preparation?'PRÉPARER UNE EXPÉDITION':{inventory:'INVENTAIRE',craft:'FABRICATION',settings:'PARAMÈTRES',sport:'ACTIVITÉ'}[ui.tab]||'INSTALLATION';return value;}
    document.querySelector('.eyebrow').textContent='CONSTRUCTION';
    $('panelTitle').textContent='Construire';
    $('panelBody').innerHTML=ConstructionUI.catalogue();

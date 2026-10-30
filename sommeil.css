@@ -1,0 +1,6 @@
+#sleepVeil{position:fixed;inset:0;z-index:1100;background:#000;pointer-events:auto}
+#sleepVeil[hidden]{display:none}
+#sleepStatus{display:none;position:fixed;z-index:1101;left:50%;top:50%;transform:translate(-50%,-50%);padding:12px 18px;color:#f5ebd0;text-align:center;pointer-events:none;max-width:85vw;letter-spacing:.05em}
+.sleep-active #sleepStatus{display:block}
+.sleep-active #scene{cursor:default}
+.sleep-active #selection{display:none!important}

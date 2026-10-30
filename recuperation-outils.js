@@ -27,7 +27,7 @@ const ToolRecovery=(()=>{
   ui.auto=null;ui.selection=o.id;interactWith(o,!o.placed?'uproot':'pickup');drawSelection();return true;
  }
  function init(){
-  if(BuildingArea.tools)return;
+  if(new URLSearchParams(location.search).has('outils'))return;
   $('toolbelt').addEventListener('click',e=>{const b=e.target.closest('[data-recovery-tool]');if(b)start(b.dataset.recoveryTool);});
   new ResizeObserver(paint).observe($('toolbelt'));window.addEventListener('resize',paint);
   window.addEventListener('keydown',e=>{if(e.key==='Escape')stop();});

@@ -3,7 +3,10 @@
 'use strict';
 const SaveContinuity=(()=>{
  const APPLICATION='veilleurs-construction-etape1',FORMAT=2,LIMIT=12000000;
- const migrationKey=SAVE_KEY+'.avant-migration-v1',importKey=SAVE_KEY+'.avant-import',worldKey=SAVE_KEY+'.avant-monde-libre-v1';
+ const migrationKey=SAVE_KEY+'.avant-migration-v1',importKey=SAVE_KEY+'.avant-import',worldKey=SAVE_KEY+'.avant-monde-libre-v1',paiKey=SAVE_KEY+'.avant-pai-v1',malleKey=SAVE_KEY+'.avant-malle-v8';
+ const expeditionKey=SAVE_KEY+'.avant-preparation-expedition-v1';
+ const paillasseKey=SAVE_KEY+'.avant-paillasse-v1';
+ const nightsKey=SAVE_KEY+'.avant-nuits-v1';
  let expectedRaw=null,loaded=false,prepare,activate,lastError='',importing=false;
  const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
  const own=(o,k)=>Object.hasOwn(o,k);
@@ -28,6 +31,7 @@ const SaveContinuity=(()=>{
   requireValue(record(s.player)&&Number.isFinite(s.player.x)&&Number.isFinite(s.player.y),'Position du personnage invalide.');
   requireValue(['person','right','left','back'].includes(s.player.face),'Orientation du personnage invalide.');
   requireValue(nonnegative(s.sport)&&nonnegative(s.cul),'Réserves d’énergie invalides.');
+  if(typeof ExpeditionPrep!=='undefined')ExpeditionPrep.validate(s);
   requireValue(own(MODES,s.mode),'Difficulté inconnue.');inventory(s.items);
   requireValue(record(s.remainders)&&record(s.cardioDays),'Activités incomplètes.');
   for(const [k,n]of Object.entries(s.remainders))requireValue(own(MODES,k)&&integer(n)&&n<MODES[k],'Secondes reportées invalides.');
@@ -48,6 +52,8 @@ const SaveContinuity=(()=>{
   requireValue(Array.isArray(s.objects)&&s.objects.length<100000,'Liste des objets invalide.');
   const ids=new Set();let maxId=0,benches=0;
   for(const o of s.objects){
+   if(own(o,'paillasseVersion'))requireValue(o.paillasseVersion===1&&o.type==='paillasse'&&o.placed,'Version de paillasse incompatible.');
+   if(own(o,'malleTrialVersion'))requireValue(o.malleTrialVersion===1&&o.type==='coffre'&&o.placed&&o.expeditionPreview===true,'Version de malle témoin incompatible.');
    requireValue(record(o)&&Number.isSafeInteger(o.id)&&o.id>0&&!ids.has(o.id),'Identifiants d’objets invalides ou répétés.');ids.add(o.id);maxId=Math.max(maxId,o.id);
    requireValue(Number.isFinite(o.x)&&Number.isFinite(o.y)&&typeof o.placed==='boolean','Position d’objet invalide.');
    requireValue(o.placed?(o.type==='arbuste'||own(CRAFT,o.type)&&CRAFT[o.type].kind!=='outil'):own(COLLECT,o.type),'Type d’objet incompatible.');
@@ -68,6 +74,7 @@ const SaveContinuity=(()=>{
    requireValue(Array.isArray(s.respawnQueue),'Repousses sauvages invalides.');
    for(const q of s.respawnQueue)requireValue(record(q)&&own(COLLECT,q.type)&&Number.isFinite(q.x)&&Number.isFinite(q.y)&&nonnegative(q.at)&&(!own(q,'attempt')||integer(q.attempt)),'Échéance sauvage invalide.');
   }
+  if(typeof NightGrowth!=='undefined')NightGrowth.validate(s);
   const t=s.constructionTrial;
   requireValue(record(t)&&t.version===1&&[0,1,2,3].includes(t.rotation)&&typeof t.doorOpen==='boolean','Cette sauvegarde ne provient pas du laboratoire compatible.');
   if(own(t,'doorOutward'))requireValue(Array.isArray(t.doorOutward)&&t.doorOutward.length===2&&t.doorOutward.every(Number.isInteger)&&Math.abs(t.doorOutward[0])+Math.abs(t.doorOutward[1])===1,'Sens de porte invalide.');
@@ -85,11 +92,25 @@ const SaveContinuity=(()=>{
   const envelope=record(input)&&own(input,'application');
   if(envelope)requireValue(input.application===APPLICATION&&input.formatVersion===FORMAT,'Sauvegarde d’un autre jeu ou d’une version non prise en charge.');
   else requireValue(record(input)&&input.version===1&&record(input.constructionTrial),'Ancienne sauvegarde extérieure au laboratoire ou version incompatible.');
-  const candidate=validate(envelope?input.state:input);
+  const source=envelope?input.state:input;
+  const cookingMigrated=typeof ExpeditionPrep!=='undefined'&&ExpeditionPrep.restoreMarmiteGains(source);
+  const candidate=validate(source);
   // Toutes les transformations portent sur cette nouvelle valeur JSON, jamais sur state.
   const nettlesMigrated=candidate.nettlesVersion!==1,worldMigrated=!BuildingArea.tools&&(candidate.settlementVersion!==1||candidate.landscapeVersion!==1);
-  prepare(candidate);validate(candidate);
-  return {state:candidate,legacy:!envelope,nettlesMigrated,worldMigrated};
+  const paiMigrated=!own(candidate,'paiDays')||!own(candidate,'paiStartDate');
+  if(!own(candidate,'paiDays'))candidate.paiDays={};
+  if(!own(candidate,'paiStartDate'))candidate.paiStartDate=[paiDateDefault(),...Object.keys(candidate.paiDays)].sort()[0];
+  const malleMigrated=typeof MalleTrial!=='undefined'&&MalleTrial.needsMigration(candidate);
+  if(malleMigrated)MalleTrial.migrate(candidate);
+  const expeditionMigrated=typeof ExpeditionPrep!=='undefined'&&ExpeditionPrep.needsMigration(candidate);
+  if(expeditionMigrated)ExpeditionPrep.migrate(candidate);
+  const paillasseMigrated=typeof PaillasseConstruction!=='undefined'&&PaillasseConstruction.needsMigration(candidate);
+  if(paillasseMigrated)PaillasseConstruction.migrate(candidate);
+  prepare(candidate);
+  const nightsMigrated=typeof NightGrowth!=='undefined'&&NightGrowth.needsMigration(candidate);
+  if(nightsMigrated)NightGrowth.migrate(candidate);
+  validate(candidate);
+  return {state:candidate,legacy:!envelope,nettlesMigrated,worldMigrated,paiMigrated,malleMigrated,expeditionMigrated,cookingMigrated,paillasseMigrated,nightsMigrated};
  }
  function encode(s){validate(s);return JSON.stringify({application:APPLICATION,formatVersion:FORMAT,savedAt:Date.now(),state:s});}
  function unchanged(){requireValue(localStorage.getItem(SAVE_KEY)===expectedRaw,'La partie a changé dans un autre onglet. Exporte ta progression puis recharge ce jeu.');}
@@ -107,13 +128,19 @@ const SaveContinuity=(()=>{
   expectedRaw=localStorage.getItem(SAVE_KEY);
   let candidate;
   if(expectedRaw===null){
-   requireValue(localStorage.getItem(migrationKey)===null&&localStorage.getItem(importKey)===null&&localStorage.getItem(worldKey)===null,'Sauvegarde principale absente. Un secours est disponible ci-dessous.');
+   requireValue(localStorage.getItem(migrationKey)===null&&localStorage.getItem(importKey)===null&&localStorage.getItem(worldKey)===null&&localStorage.getItem(paiKey)===null&&localStorage.getItem(malleKey)===null&&localStorage.getItem(expeditionKey)===null&&localStorage.getItem(paillasseKey)===null&&localStorage.getItem(nightsKey)===null,'Sauvegarde principale absente. Un secours est disponible ci-dessous.');
    candidate=newState();validate(candidate);
   }
   else{
    const decoded=decode(expectedRaw);candidate=decoded.state;
+   if(decoded.nightsMigrated){unchanged();if(localStorage.getItem(nightsKey)===null)checkpoint(nightsKey,expectedRaw);}
+   if(decoded.paillasseMigrated){unchanged();if(localStorage.getItem(paillasseKey)===null)checkpoint(paillasseKey,expectedRaw);}
+   if(decoded.cookingMigrated){unchanged();checkpoint(SAVE_KEY+'.avant-retablissement-gains-marmite-v1',expectedRaw);}
    if(decoded.legacy||decoded.nettlesMigrated){unchanged();checkpoint(migrationKey,expectedRaw);}
    if(decoded.worldMigrated){unchanged();checkpoint(worldKey,expectedRaw);}
+   if(decoded.paiMigrated){unchanged();checkpoint(paiKey,expectedRaw);}
+   if(decoded.malleMigrated){unchanged();checkpoint(malleKey,expectedRaw);}
+   if(decoded.expeditionMigrated){unchanged();if(localStorage.getItem(expeditionKey)===null)checkpoint(expeditionKey,expectedRaw);}
   }
   loaded=true;return candidate;
  }
@@ -125,8 +152,10 @@ const SaveContinuity=(()=>{
  async function importFile(file){
   if(!file||importing)return false;importing=true;
   try{
-   requireValue(file.size<=LIMIT,'Fichier trop volumineux.');const candidate=decode(await file.text()).state;
+   requireValue(file.size<=LIMIT,'Fichier trop volumineux.');const importedRaw=await file.text(),decoded=decode(importedRaw),candidate=decoded.state;
    if(!confirm('Importer cette sauvegarde ? Elle remplacera ta partie actuelle. Un secours de la partie remplacée sera conservé.'))return false;
+   if(decoded.paillasseMigrated&&localStorage.getItem(paillasseKey)===null)checkpoint(paillasseKey,importedRaw);
+   if(decoded.nightsMigrated&&localStorage.getItem(nightsKey)===null)checkpoint(nightsKey,importedRaw);
    // Capture aussi les actions encore en attente de l’enregistrement différé.
    const previous=state?encode(state):expectedRaw;
    const raw=encode(candidate);unchanged();const oldBackup=localStorage.getItem(importKey);if(previous!==null)checkpoint(importKey,previous);
@@ -157,7 +186,7 @@ const SaveContinuity=(()=>{
   const p=document.createElement('p');p.textContent='Partie conservée, chargement interrompu : '+error.message;host.append(p);
   const button=(label,action)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=action;host.append(b);};
   if(expectedRaw!==null)button('Exporter les données conservées',()=>download(expectedRaw,'veilleurs-donnees-conservees.json'));
-  for(const [key,label]of [[migrationKey,'Exporter le secours avant mise à jour'],[importKey,'Exporter le secours avant import'],[worldKey,'Exporter le secours avant retrait du témoin / paysage']]){
+  for(const [key,label]of [[nightsKey,'Exporter le secours avant la pousse nocturne'],[paillasseKey,'Exporter le secours avant la paillasse'],[expeditionKey,'Exporter le secours avant la préparation des expéditions'],[migrationKey,'Exporter le secours avant mise à jour'],[importKey,'Exporter le secours avant import'],[worldKey,'Exporter le secours avant retrait du témoin / paysage'],[paiKey,'Exporter le secours avant les PAI'],[malleKey,'Exporter le secours avant la malle V8']]){
    try{const raw=localStorage.getItem(key);if(raw!==null)button(label,()=>download(raw,'veilleurs-secours.json'));}catch{}
   }
   const label=document.createElement('label');label.textContent='Importer un fichier de secours : ';
@@ -167,8 +196,10 @@ const SaveContinuity=(()=>{
   prepare=hooks.prepare;activate=hooks.activate;loadSave=load;saveNow=save;importSave=importFile;
   exportSave=function(){try{download(encode(state),'veilleurs-construction-'+new Date().toISOString().slice(0,10)+'.json');toast('Fichier de sauvegarde exporté.');}catch(e){toast('Export impossible : '+e.message);}};
   const originalPanelClick=handlePanelClick;
-  handlePanelClick=function(e){const b=e.target.closest('[data-action=export-rescue]');if(b){try{if(![migrationKey,importKey,worldKey].includes(b.dataset.backup))return;const raw=localStorage.getItem(b.dataset.backup);if(raw!==null)download(raw,'veilleurs-secours.json');else toast('Aucun secours de ce type : aucune opération correspondante effectuée.');}catch(error){toast(error.message);}return;}return originalPanelClick(e);};
+  handlePanelClick=function(e){const b=e.target.closest('[data-action=export-rescue]');if(b){try{if(![migrationKey,importKey,worldKey,paiKey,malleKey,expeditionKey,paillasseKey,nightsKey].includes(b.dataset.backup))return;const raw=localStorage.getItem(b.dataset.backup);if(raw!==null)download(raw,'veilleurs-secours.json');else toast('Aucun secours de ce type : aucune opération correspondante effectuée.');}catch(error){toast(error.message);}return;}return originalPanelClick(e);};
  }
- function backupButtons(){return `<button class="btn full secondary" data-action="export-rescue" data-backup="${migrationKey}">Exporter le secours avant mise à jour</button><button class="btn full secondary" data-action="export-rescue" data-backup="${importKey}">Exporter le secours avant import</button><button class="btn full secondary" data-action="export-rescue" data-backup="${worldKey}">Exporter le secours avant retrait du témoin / paysage</button>`;}
+ function backupButtons(){return `<button class="btn full secondary" data-action="export-rescue" data-backup="${expeditionKey}">Exporter le secours avant la préparation des expéditions</button><button class="btn full secondary" data-action="export-rescue" data-backup="${malleKey}">Exporter le secours avant la malle V8</button><button class="btn full secondary" data-action="export-rescue" data-backup="${paiKey}">Exporter le secours avant les PAI</button><button class="btn full secondary" data-action="export-rescue" data-backup="${migrationKey}">Exporter le secours avant mise à jour</button><button class="btn full secondary" data-action="export-rescue" data-backup="${importKey}">Exporter le secours avant import</button><button class="btn full secondary" data-action="export-rescue" data-backup="${worldKey}">Exporter le secours avant retrait du témoin / paysage</button>`;}
+ const previousButtons=backupButtons;
+ backupButtons=()=>`<button class="btn full secondary" data-action="export-rescue" data-backup="${nightsKey}">Exporter le secours avant la pousse nocturne</button><button class="btn full secondary" data-action="export-rescue" data-backup="${paillasseKey}">Exporter le secours avant la paillasse</button>`+previousButtons();
  return {install,decode,encode,validate,recovery,backupButtons,migrationKey,importKey,worldKey,get error(){return lastError;}};
 })();

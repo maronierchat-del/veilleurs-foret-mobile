@@ -53,6 +53,8 @@
 .pai-calendar .pai-day{min-width:0;min-height:44px;padding:3px 1px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-variant-numeric:tabular-nums}.pai-day>span{font-size:12px}.pai-calendar .pai-day small{font-size:9px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;color:inherit}
 .pai-calendar .has-pai{background:#baab79;color:#151f17;font-weight:700;border-color:#e6cf94}.pai-calendar .pai-day[aria-pressed=true]{outline:2px solid #f0db9c;outline-offset:0}.pai-calendar button:disabled{opacity:.3;cursor:default}.pai-calendar button:focus-visible,.pai-date-row button:focus-visible{outline:2px solid #f0db9c;outline-offset:1px}
 .panel .pai-calendar-legend{font-size:10px;margin:9px 0 0}.pai-calendar-legend span{color:#e6cf94}
+
+/* Interface de difficulté validée en alpha 1, reprise sélective. */
 .sport-difficulty{padding:0 0 8px;margin-bottom:4px;border-bottom:1px solid #999b7c55}
 .panel .sport-mode-heading label{margin:0;font-size:12px;color:#b9bba6}
 .sport-mode-heading{display:flex;align-items:center;gap:8px;min-height:32px}
@@ -77,3 +79,24 @@
 .sport-pls-warning>div{display:flex;flex-wrap:wrap;gap:6px}.sport-pls-warning button{min-height:44px;padding:8px;border:1px solid #d6bc88;border-radius:7px;background:#d6bc88;color:#17231b;font-weight:bold}
 .sport-pls-warning button[data-action=sport-pls-cancel]{background:transparent;color:#ffe7ba}
 .panel #sportMode:disabled{opacity:.4;cursor:default}
+
+/* Cuisine : vignettes du sac et une seule recette détaillée. */
+.panel.kitchen-panel{top:var(--craft-panel-top,140px);bottom:auto;max-height:var(--craft-panel-height,calc(100vh - 240px));width:min(390px,calc(100vw - 20px));padding:0;overflow:hidden}
+.kitchen-panel .panel-top{flex-shrink:0;padding:12px 14px;margin:0}
+.kitchen-panel #panelBody{display:flex;flex-direction:column;gap:10px;overflow-y:auto;min-height:0;padding:12px}
+.kitchen-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;flex-shrink:0}
+.kitchen-grid .kitchen-recipe{height:96px}
+.kitchen-grid .inventory-name{font-size:12px}
+.kitchen-detail{background:#14201999;border-radius:8px;padding:10px;flex-shrink:0}
+.kitchen-gain{font-size:12px;color:#d2d6bf;margin-bottom:7px}
+.kitchen-panel .energy-symbol{width:12px;height:16px;vertical-align:-3px}
+.kitchen-panel #panelTitle .energy-symbol{width:17px;height:23px;vertical-align:-4px}
+.kitchen-panel .inventory-gain .energy-symbol{width:9px;height:12px}
+.kitchen-ingredients{display:flex;flex-wrap:wrap;gap:3px 12px;margin-bottom:8px;padding:7px 9px;border:1px solid #a9a78155;border-radius:7px;background:#29362a80}
+.kitchen-ingredient{display:flex;align-items:center;gap:5px}
+.kitchen-ingredient>img{width:22px;height:23px;object-fit:contain;flex-shrink:0}
+.kitchen-ingredient strong{font-size:13px;color:#e4e4d2}
+.kitchen-ingredient.missing strong{color:#efb6a5}
+.kitchen-detail button{min-height:44px;margin:0}
+.kitchen-panel .kitchen-reason{font-size:12px;margin:7px 0 0;color:#e6bf9f}
+.kitchen-panel button:focus-visible{outline:3px solid #f8d998;outline-offset:2px}

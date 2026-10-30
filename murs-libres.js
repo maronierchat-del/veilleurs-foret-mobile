@@ -5,7 +5,7 @@ const WallPlacement=(()=>{
  let api,mode=null,kind='mur',flipped=false,hover=null,gesture=null,previewKey='';
  const same=(a,b)=>a.u===b.u&&a.v===b.v;
  function cells(p){return p.rot===0?[{u:p.u,v:p.v-1},{u:p.u,v:p.v}]:[{u:p.u-1,v:p.v},{u:p.u,v:p.v}];}
- const inZone=p=>BuildingArea.edge(p)&&(!BuildingArea.tools||cells(p).some(c=>c.u>=FloorPlacement.zone.minU&&c.u<=FloorPlacement.zone.maxU&&c.v>=FloorPlacement.zone.minV&&c.v<=FloorPlacement.zone.maxV));
+ const inZone=p=>BuildingArea.edge(p)&&(!BuildingArea.restricted||cells(p).some(c=>c.u>=FloorPlacement.zone.minU&&c.u<=FloorPlacement.zone.maxU&&c.v>=FloorPlacement.zone.minV&&c.v<=FloorPlacement.zone.maxV));
  const supported=(p,floors)=>cells(p).some(c=>floors.some(f=>same(c,f)));
  function sanitize(list,floors,fixed){const seen=new Set(fixed.map(G.edgeId));return (Array.isArray(list)?list:[]).filter(p=>{if(!p||!kinds.has(p.key)||!Number.isInteger(p.u)||!Number.isInteger(p.v)||![0,3].includes(p.rot)||!BuildingArea.edge(p))return false;const id=G.edgeId(p);if(seen.has(id))return false;seen.add(id);return true;}).map(p=>({id:'arete-libre-'+G.edgeId(p),key:p.key,u:p.u,v:p.v,rot:p.rot,...(p.key==='porte'?{hinge:p.hinge==='right'?'right':'left',open:p.open===true,outward:p.rot===0?[0,p.outward?.[1]===-1?-1:1]:[p.outward?.[0]===1?1:-1,0]}:{})}));}
  function candidate(edge){const p={...edge,key:kind,id:'arete-libre-'+G.edgeId(edge)};if(kind==='porte'){p.hinge=flipped?'right':'left';p.outward=HouseDoor.awayFrom(p,api.toGrid(state.player.x,state.player.y),G);p.open=false;}return p;}

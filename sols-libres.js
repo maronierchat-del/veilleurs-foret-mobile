@@ -3,7 +3,7 @@
 const FloorPlacement=(()=>{
  const G=LabGeometry,zone={minU:-1,maxU:3,minV:4,maxV:6};
  let api,mode=null,hover=null,gesture=null,previewKey='';
- const inZone=p=>BuildingArea.cell(p)&&(!BuildingArea.tools||p.u>=zone.minU&&p.u<=zone.maxU&&p.v>=zone.minV&&p.v<=zone.maxV);
+ const inZone=p=>BuildingArea.cell(p)&&(!BuildingArea.restricted||p.u>=zone.minU&&p.u<=zone.maxU&&p.v>=zone.minV&&p.v<=zone.maxV);
  const same=(a,b)=>a.u===b.u&&a.v===b.v;
  function sanitize(list){const seen=new Set();return (Array.isArray(list)?list:[]).filter(p=>{if(!BuildingArea.cell(p)||BuildingArea.fixedCount&&p.u>=0&&p.u<4&&p.v>=0&&p.v<4)return false;const key=p.u+':'+p.v;if(seen.has(key))return false;seen.add(key);return true;}).map(p=>({key:'sol',id:'sol-libre-'+p.u+':'+p.v,u:p.u,v:p.v}));}
  function evaluate(p,action=mode){if(!hasTool('marteau'))return {valid:false,reason:'Équipe le marteau depuis le sac, ou fabrique-le.'};if(!inZone(p))return {valid:false,reason:'Choisis une case libre dans la région.'};if(BuildingArea.fixedCount&&p.u>=0&&p.u<4&&p.v>=0&&p.v<4)return {valid:false,reason:'Le plancher de la maison existante est conservé.'};

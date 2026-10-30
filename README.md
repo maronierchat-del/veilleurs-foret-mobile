@@ -1,7 +1,7 @@
-# Les Veilleurs de la Forêt
+# Les Veilleurs de la Forêt — Alpha 2
 
-Copie jouable du laboratoire pour les essais sur mobile.
+Version du 30 octobre 2026. Lit et cultures nocturnes, cuisine et pépinière, pose à distance.
 
-Ouvrir https://maronierchat-del.github.io/veilleurs-foret-mobile/ pour commencer une partie neuve. La progression reste locale à chaque navigateur ; export/import disponibles dans Paramètres.
+https://maronierchat-del.github.io/veilleurs-foret-mobile/
 
-Version de test du 26 octobre 2026 : monde libre, carte aérée et commandes tactiles simplifiées. Les durées de production et de repousse restent provisoires.
+Les parties existantes sont reprises avec secours avant migration. Export/import dans Paramètres. La mise à jour hors connexion devient disponible après téléchargement complet et fermeture des anciens onglets.

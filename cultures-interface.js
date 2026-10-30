@@ -3,24 +3,25 @@
 const CultivationUI=(()=>{
  const choices={
   potager:{verb:'Planter',action:'plant',item:'jeunes_plants',quantity:4,crop:'Carottes',image:'jeunes_plants',cost:1,harvest:'harvest-garden',harvestCost:2,materials:'4 jeunes plants'},
-  pepiniere:{verb:'Mettre à germer',action:'nursery',item:'carotte',quantity:1,crop:'Carottes',image:'carotte_item',cost:2,harvest:'nursery-collect',harvestCost:0,materials:'1 carotte'},
+  pepiniere:{verb:'Mettre à germer',action:'nursery',item:'carotte',quantity:1,crop:'Carottes',image:'carotte_item',cost:1,harvest:'nursery-collect',harvestCost:1,materials:'1 carotte'},
   champignonniere:{verb:'Ensemencer',action:'inoculate',item:'champignon',quantity:1,crop:'Champignons',image:'champignon',cost:1,harvest:'harvest-mushrooms',harvestCost:2,materials:'1 champignon'}
  };
  const supports=o=>!!o?.placed&&Object.hasOwn(choices,o.type);
  const status=o=>o.type==='champignonniere'&&!o.seeded||o.type!=='champignonniere'&&!o.stage?'empty':o.stage===2?'ready':'growing';
  const energy=n=>`<span class="resource-cost" aria-label="${n} point${n===1?'':'s'} d’énergie">${n}<svg class="energy-symbol" aria-hidden="true" focusable="false"><use href="#energy-bolt" /></svg></span>`;
- function countdown(target){if(!target)return 'Croissance en cours.';const minutes=Math.max(0,Math.ceil((target-Date.now())/60000)),h=Math.floor(minutes/60),m=minutes%60;return 'Prochaine étape : '+(minutes?`${h?h+' h ':''}${m?m+' min':''}`.trim():'imminente');}
+ function countdown(o){return NightGrowth.label(o);}
  function harvest(o){if(supports(o)&&status(o)==='ready')requestStationAction(choices[o.type].harvest);}
  function init(){
-  if(BuildingArea.tools)return;
+  if(new URLSearchParams(location.search).has('outils'))return;
   const oldSelection=drawSelection;
   drawSelection=function(){oldSelection();const o=state.objects.find(o=>o.id===ui.selection),el=$('selection');el.classList.toggle('cultivation-selection',supports(o));
    if(o?.placed&&o.type==='etabli'){el.hidden=true;return;}
    if(!supports(o))return;
+   el.hidden=false;
    const c=choices[o.type],phase=status(o),title=document.createElement('strong'),name=document.createElement('span');title.className='resource-summary';name.textContent=displayName(o);title.append(name);el.replaceChildren(title);
    if(phase==='empty'){const button=document.createElement('button');button.type='button';button.dataset.cropStart=String(o.id);button.innerHTML=c.verb+' '+energy(c.cost);title.append(button);}
    else if(phase==='ready')title.insertAdjacentHTML('beforeend',energy(c.harvestCost));
-   else {const p=document.createElement('p');p.textContent=countdown(o.readyAt);el.append(p);}
+   else {const p=document.createElement('p');p.textContent=countdown(o);el.append(p);}
   };
   $('selection').addEventListener('click',e=>{const button=e.target.closest('[data-crop-start]');if(!button)return;const o=state.objects.find(o=>o.id===Number(button.dataset.cropStart));if(supports(o)&&status(o)==='empty')openObjectMenu(o);});
   const oldPanel=renderPanel;

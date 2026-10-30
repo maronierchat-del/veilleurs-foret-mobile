@@ -29,12 +29,14 @@ const DirectMapControls=(()=>{
     if(!object.placed&&COLLECT[object.type]&&!(object.type==='bush'&&object.harvested)&&!ui.auto)interactWith(object,'gather');
     else if(object.placed&&object.type==='arbuste'&&object.stage===3&&!ui.auto)requestStationAction('harvest-bush');
     else if(CultivationUI.supports(object)&&!ui.auto)CultivationUI.harvest(object);
+    else if(PaillasseSleep.supports(object)&&!ui.auto)requestStationAction('rest');
     drawSelection();return;
    }
    dismissObjectMenu();
-   if(object.placed&&(object.type==='arbuste'||CultivationUI.supports(object))){closePanel();ui.stationId=object.id;ui.objectMenu=object.id;ui.selection=object.id;drawSelection();return;}
+   if(object.placed&&(object.type==='arbuste'||CultivationUI.supports(object)||PaillasseSleep.supports(object))){closePanel();ui.stationId=object.id;ui.objectMenu=object.id;ui.selection=object.id;drawSelection();return;}
    ui.selection=object.id;drawSelection();if(object.placed)openObjectMenu(object);return;
   }
+  if(BoundaryMist.interact(world.x,world.y))return;
   if(ui.selection!==null||ui.objectMenu!=null){dismissObjectMenu();return;}
   if(!BoundaryMist.contains(world.x,world.y))return;
   ui.auto={x:world.x,y:world.y,id:null};

@@ -2,14 +2,14 @@
    Toutes les écritures restent dans la sauvegarde propre à cette copie. */
 'use strict';
 const ConstructionTrial=(()=>{
- const G=LabGeometry,M=ValidatedModel,origin={x:1500,y:1400},openWorld=!BuildingArea.tools;let tiles;
+ const G=LabGeometry,M=ValidatedModel,origin={x:1500,y:1400},openWorld=!BuildingArea.restricted;let tiles;
  const camera={x:180,y:350,zoom:1},surface=document.createElement('canvas');
  surface.width=1100;surface.height=850;
  const context=surface.getContext('2d',{willReadFrequently:true}),floorSurface=document.createElement('canvas');floorSurface.width=surface.width;floorSurface.height=surface.height;
  const fixedCount=BuildingArea.fixedCount;
  const floors=Array.from({length:fixedCount},(_,i)=>({key:'sol',u:i%4,v:Math.floor(i/4)}));
  const roofs=[],walls=[],objects=[],images={};let rotation=0,occlusion,ready=false,lastKey='',lastMs=0,renderFloors=floors,renderWalls=walls,renderRoofs=roofs;
- const modelObjects=()=>[...objects,...CultivationPlacement.models()];
+ const modelObjects=()=>[...objects,...CultivationPlacement.models(),...MalleTrial.models()];
  function refreshRoofs(preview=null){renderRoofs=preview||roofs;lastKey='';}
  function refreshWalls(preview=null){renderWalls=preview||walls;lastKey='';}
  function refreshFloors(preview=null){renderFloors=preview||floors;if(openWorld){lastKey='';return;}floorSurface.getContext('2d').clearRect(0,0,surface.width,surface.height);FloorProposal.draw(floorSurface.getContext('2d'),renderFloors,(u,v,z=0)=>G.project(u,v,camera,z),1);lastKey='';}
@@ -50,7 +50,7 @@ const ConstructionTrial=(()=>{
  }
  function returnToDoor(){MapControls.center();const p=toWorld(...turn([.5,4.65],rotation));Object.assign(state.player,p);ui.auto=null;ui.keys.clear();ui.touch.clear();ui.camera.x=p.x;ui.camera.y=p.y-120/(ui.camera.zoom*.7);lastKey='';saveSoon();}
  const originalNewState=newState;
- newState=function(){const s=fixture(originalNewState());if(fixedCount)Object.assign(s.player,toWorld(.5,4.65));return s;};
+ newState=function(){const s=fixture(originalNewState());if(fixedCount)Object.assign(s.player,new URLSearchParams(location.search).has('maison-test')?toWorld(1.6,2.8):toWorld(.5,4.65));return s;};
  SaveContinuity.install({prepare(s){
   spaceWildResources(s);migrateSave(s);
   // Refuser une pièce perdue par normalisation plutôt que réenregistrer une scène amputée.
@@ -85,7 +85,7 @@ const ConstructionTrial=(()=>{
   let blocked=M.blocked([q.u,q.v],[],[next],DoorGeometry,G);
   for(let i=0;i<=20&&!blocked;i++){const leaf=HouseDoor.geometry({...next,open:true},G,i/20).polygon;
    blocked=touches(q,leaf)||modelObjects().some(o=>CultivationPlacement.clearance(o).some(poly=>M.overlap(poly,leaf)))||walls.some(w=>w!==p&&(M.overlap(leaf,M.wallPoly(w,G))||w.key==='porte'&&w.open&&M.overlap(leaf,HouseDoor.geometry(w,G).polygon)));
-   if(!blocked)blocked=state.objects.some(o=>{if(o.trialFixture||CultivationPlacement.isFixture(o))return false;if(BushTransplant.isFixture(o))return M.overlap(leaf,BushTransplant.footprint(o));const poly=leaf.map(([u,v])=>{const a=toWorld(u,v);return [a.x,a.y];}),radius=o.type==='tree'?47:o.type==='rock'?42:o.type==='bush'?36:35;return touches({u:o.x,v:o.y},poly,radius);});
+   if(!blocked)blocked=state.objects.some(o=>{if(o.trialFixture||CultivationPlacement.isFixture(o)||MalleTrial.isFixture(o))return false;if(BushTransplant.isFixture(o))return M.overlap(leaf,BushTransplant.footprint(o));const poly=leaf.map(([u,v])=>{const a=toWorld(u,v);return [a.x,a.y];}),radius=o.type==='tree'?47:o.type==='rock'?42:o.type==='bush'?36:35;return touches({u:o.x,v:o.y},poly,radius);});
   }
   if(blocked){toast('La porte est bloquée par le personnage ou un obstacle.');return false;}
   p.open=next.open;p.outward=next.outward;if(walls.indexOf(p)<BuildingArea.fixedCount){state.constructionTrial.doorOpen=p.open;state.constructionTrial.doorOutward=[...p.outward];}ui.auto=null;lastKey='';saveSoon();return true;
@@ -126,9 +126,9 @@ const ConstructionTrial=(()=>{
   const sample=openWorld&&tiles?.sample(p.x-camera.x,p.y-camera.y),owner=openWorld?(sample?.tile.last.owners[sample.index]||0):d&&px>=0&&py>=0&&px<d.W&&py<d.H?d.owners[py*d.W+px]:0;
   if(owner===1&&fixedCount)return state.objects.find(o=>o.trialFixture==='bench');
   const model=modelObjects()[owner-1];if(model?.sourceId)return state.objects.find(o=>o.id===model.sourceId);
-  const found=originalObjectAt(x,y);if(openWorld&&sample&&found&&(found.type==='bush'||BushTransplant.isFixture(found))&&owner!==30000+state.objects.filter(o=>!o.trialFixture).indexOf(found))return null;return found?.trialFixture||CultivationPlacement.isFixture(found)?null:found;
+  const found=originalObjectAt(x,y);if(openWorld&&sample&&found&&(found.type==='bush'||BushTransplant.isFixture(found))&&owner!==30000+state.objects.filter(o=>!o.trialFixture).indexOf(found))return null;return found?.trialFixture||CultivationPlacement.isFixture(found)||MalleTrial.isFixture(found)?null:found;
  };
- function imageRect(im,foot,height){const h=height,w=h*im.naturalWidth/im.naturalHeight;return {x:foot.x-w/2,y:foot.y-h,w,h};}
+ function imageRect(im,foot,height){if(im.src?.includes('/malle-blender-v1/')){const scale=1/2.65;return {x:foot.x-512*scale,y:foot.y-640*scale,w:1024*scale,h:896*scale,scale};}const h=height,w=h*im.naturalWidth/im.naturalHeight;return {x:foot.x-w/2,y:foot.y-h,w,h};}
  // Le personnage est toujours dessiné depuis son image source à la densité
  // réelle de l'écran ; aucun passage par l'image de maison à résolution fixe.
  const heroCanvas=document.createElement('canvas'),heroContext=heroCanvas.getContext('2d',{willReadFrequently:true}),heroMetrics=new Map();
@@ -168,7 +168,7 @@ const ConstructionTrial=(()=>{
   heroContext.putImageData(data,0,0);ctx.save();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(heroCanvas,left/dpr,top/dpr,width/dpr,height/dpr);ctx.restore();
   lastMs+=performance.now()-start;const result={pose:pose.key,rect:r,pixels:data.data.filter((v,i)=>i%4===3&&v>0).length,density:dpr};if(openWorld){heroCacheKey=cacheKey;heroCacheResult=result;}return result;
  }
- function sceneObjects(){return state.objects.filter(o=>!o.trialFixture&&!CultivationPlacement.isFixture(o)).map(o=>{const spr=spriteFor(o),im=IMAGES[spr];if(!im)return null;const q=toGrid(o.x,o.y),foot=G.project(q.u,q.v,camera),rect=BushTransplant.bounds(o,foot,1)||imageRect(im,foot,sizeFor(o,spr));return {o,image:im,u:q.u,v:q.v,footY:foot.y,rect,owner:2000+o.id};}).filter(e=>e&&e.rect.x>=0&&e.rect.y>=0&&e.rect.x+e.rect.w<=surface.width&&e.rect.y+e.rect.h<=surface.height);}
+ function sceneObjects(){return state.objects.filter(o=>!o.trialFixture&&!CultivationPlacement.isFixture(o)&&!MalleTrial.isFixture(o)).map(o=>{const spr=spriteFor(o),im=IMAGES[spr];if(!im)return null;const q=toGrid(o.x,o.y),foot=G.project(q.u,q.v,camera),rect=BushTransplant.bounds(o,foot,1)||imageRect(im,foot,sizeFor(o,spr));return {o,image:im,u:q.u,v:q.v,footY:foot.y,rect,owner:2000+o.id};}).filter(e=>e&&e.rect.x>=0&&e.rect.y>=0&&e.rect.x+e.rect.w<=surface.width&&e.rect.y+e.rect.h<=surface.height);}
  function draw(){if(!ready)return;
   lastMs=0;
   const activeRoofs=RoofPlacement.visible(renderRoofs,interior()),key=JSON.stringify([interior(),hiddenWalls().map(G.edgeId),rotation,renderWalls,activeRoofs,state.objects.map(o=>[o.id,spriteFor(o),o.x,o.y,o.rot])]);
@@ -178,20 +178,20 @@ const ConstructionTrial=(()=>{
   }
   const p=screenCamera();ctx.drawImage(surface,p.x-camera.x*p.zoom,p.y-camera.y*p.zoom,surface.width*p.zoom,surface.height*p.zoom);
  }
- function worldExtras(){return state.objects.filter(o=>!o.trialFixture).map((o,index)=>{if(CultivationPlacement.isFixture(o))return null;const image=IMAGES[spriteFor(o)];if(!image)return null;const q=toGrid(o.x,o.y),foot=G.project(q.u,q.v,{x:0,y:0,zoom:1});return {o,image,construction:BushTransplant.isFixture(o),u:q.u,v:q.v,footY:foot.y,rect:BushTransplant.bounds(o,foot,1)||imageRect(image,foot,sizeFor(o,spriteFor(o))),owner:30000+index};}).filter(Boolean);}
+ function worldExtras(){return state.objects.filter(o=>!o.trialFixture).map((o,index)=>{if(CultivationPlacement.isFixture(o)||MalleTrial.isFixture(o))return null;const image=IMAGES[spriteFor(o)];if(!image)return null;const q=toGrid(o.x,o.y),foot=G.project(q.u,q.v,{x:0,y:0,zoom:1});return {o,image,construction:BushTransplant.isFixture(o),u:q.u,v:q.v,footY:foot.y,rect:BushTransplant.bounds(o,foot,1)||imageRect(image,foot,sizeFor(o,spriteFor(o))),owner:30000+index};}).filter(Boolean);}
  function worldFrame(){
   const start=performance.now(),screen=screenCamera(),active=RoofPlacement.visible(renderRoofs,interior()),views=tiles.render({floors:renderFloors,walls:renderWalls,roofs:active,objects:modelObjects(),hiddenWalls:hiddenWalls(),extras:worldExtras(),screen});
-  const outside=state.objects.filter(o=>!o.trialFixture&&!CultivationPlacement.isFixture(o)).sort((a,b)=>a.y-b.y),clipOutside=()=>{ctx.beginPath();ctx.rect(0,0,W,H);for(const t of views)ctx.rect(screen.x+t.left*screen.zoom,screen.y+t.top*screen.zoom,t.surface.width*screen.zoom,t.surface.height*screen.zoom);ctx.clip('evenodd');};
+  const outside=state.objects.filter(o=>!o.trialFixture&&!CultivationPlacement.isFixture(o)&&!MalleTrial.isFixture(o)).sort((a,b)=>a.y-b.y),clipOutside=()=>{ctx.beginPath();ctx.rect(0,0,W,H);for(const t of views)ctx.rect(screen.x+t.left*screen.zoom,screen.y+t.top*screen.zoom,t.surface.width*screen.zoom,t.surface.height*screen.zoom);ctx.clip('evenodd');};
   ctx.save();clipOutside();outside.filter(o=>o.y<=state.player.y).forEach(drawObject);ctx.restore();
   for(const t of views)ctx.drawImage(t.surface,screen.x+t.left*screen.zoom,screen.y+t.top*screen.zoom,t.surface.width*screen.zoom,t.surface.height*screen.zoom);
-  lastMs=performance.now()-start;lastHero=drawHero();ctx.save();clipOutside();outside.filter(o=>o.y>state.player.y).forEach(drawObject);ctx.restore();FloorPlacement.draw();WallPlacement.draw();RoofPlacement.draw();BushTransplant.drawPreview();CultivationPlacement.drawPreview();ConstructionUI.update();EdgeMarkers.update();
+  lastMs=performance.now()-start;lastHero=drawHero();ctx.save();clipOutside();outside.filter(o=>o.y>state.player.y).forEach(drawObject);ctx.restore();FloorPlacement.draw();WallPlacement.draw();RoofPlacement.draw();BushTransplant.drawPreview();CultivationPlacement.drawPreview();MalleTrial.drawPreview();ConstructionUI.update();EdgeMarkers.update();
  }
  let lastHero=null;
  render=function(){BoundaryMist.clampCamera();ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);drawGround();BoundaryMist.draw();if(openWorld&&ready){worldFrame();return;}
   // Le cache contient les sprites proches avec leurs profondeurs ; les autres gardent le rendu du jeu.
   const set=new Set(sceneObjects().map(e=>e.o.id));
-  const outside=state.objects.filter(o=>!o.trialFixture&&!CultivationPlacement.isFixture(o)&&!set.has(o.id)).sort((a,b)=>a.y-b.y);
-  outside.filter(o=>o.y<=state.player.y).forEach(drawObject);draw();if(ready)lastHero=drawHero();outside.filter(o=>o.y>state.player.y).forEach(drawObject);if(ready){FloorPlacement.draw();WallPlacement.draw();RoofPlacement.draw();BushTransplant.drawPreview();CultivationPlacement.drawPreview();}
+  const outside=state.objects.filter(o=>!o.trialFixture&&!CultivationPlacement.isFixture(o)&&!MalleTrial.isFixture(o)&&!set.has(o.id)).sort((a,b)=>a.y-b.y);
+  outside.filter(o=>o.y<=state.player.y).forEach(drawObject);draw();if(ready)lastHero=drawHero();outside.filter(o=>o.y>state.player.y).forEach(drawObject);if(ready){FloorPlacement.draw();WallPlacement.draw();RoofPlacement.draw();BushTransplant.drawPreview();CultivationPlacement.drawPreview();MalleTrial.drawPreview();}
  };
  const originalEvents=initEvents;
  initEvents=function(){originalEvents();let start=null;
@@ -200,12 +200,15 @@ const ConstructionTrial=(()=>{
   WallPlacement.init(ConstructionTrial);
   RoofPlacement.init(ConstructionTrial);
   GameInterface.init();
+  KitchenUI.init();
   CultivationUI.init();
   BushTransplant.init(ConstructionTrial);
-  CultivationPlacement.init(ConstructionTrial);
+  CultivationPlacement.init(ConstructionTrial);MalleTrial.init(ConstructionTrial);PortalConstruction.init(ConstructionTrial);PaillasseConstruction.init(ConstructionTrial);
   EdgeMarkers.init(ConstructionTrial);
   ToolRecovery.init();
   InventoryUI.init();
+  PaillasseSleep.init(ConstructionTrial);
+  NightGrowth.init(ConstructionTrial);
   // Capture avant les actions génériques du jeu : le battant reste sa cible propre.
   canvas.addEventListener('pointerdown',e=>{if(e.button!==0||ui.placing)return;const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,p=doorAt(x,y);if(p){start={x:e.clientX,y:e.clientY,door:p};e.preventDefault();e.stopImmediatePropagation();canvas.setPointerCapture(e.pointerId);}},true);
   canvas.addEventListener('pointerup',e=>{if(!start)return;const q=start;start=null;e.stopImmediatePropagation();if(Math.hypot(e.clientX-q.x,e.clientY-q.y)<8){ui.auto=null;toggleDoor(q.door);}},true);
@@ -220,8 +223,8 @@ const ConstructionTrial=(()=>{
   await Promise.all(Object.entries(sources).map(async([k,url])=>{const im=new Image();im.src=url;await im.decode();images[k]=im;}));
   walkLeft=document.createElement('canvas');walkLeft.width=IMAGES.walk1.width;walkLeft.height=IMAGES.walk1.height;const flip=walkLeft.getContext('2d');flip.translate(walkLeft.width,0);flip.scale(-1,1);flip.drawImage(IMAGES.walk1,0,0);
   for(const image of [IMAGES.right,IMAGES.left,IMAGES.back,IMAGES.walk1,walkLeft]){const measure=document.createElement('canvas');measure.width=image.width;measure.height=image.height;const mc=measure.getContext('2d');mc.drawImage(image,0,0);const pixels=mc.getImageData(0,0,measure.width,measure.height).data;let top=image.height,bottom=0;for(let y=0;y<image.height;y++)for(let x=0;x<image.width;x++)if(pixels[(y*image.width+x)*4+3]>20){top=Math.min(top,y);bottom=Math.max(bottom,y+1);}heroMetrics.set(image,{height:bottom-top,bottom});}
-  Object.assign(images,await CultivationPlacement.load());refreshFloors();
-  images.hero=IMAGES.person;const depths=await MeshOcclusion.unpack();occlusion=MeshOcclusion.create(context,G,M,depths);if(openWorld)tiles=ConstructionTiles.create({G,M,images,depths});
+  Object.assign(images,await CultivationPlacement.load(),await MalleTrial.load());refreshFloors();
+  images.hero=IMAGES.person;const depths=await MeshOcclusion.unpack();Object.assign(depths,await MalleTrial.loadDepths(),await PortalConstruction.loadDepths(),await PaillasseConstruction.loadDepths());occlusion=MeshOcclusion.create(context,G,M,depths);if(openWorld)tiles=ConstructionTiles.create({G,M,images,depths});
   ui.camera.zoom=W<650?.5:1;$('zoomValue').textContent=Math.round(ui.camera.zoom*100)+' %';ui.camera.y-=120/(ui.camera.zoom*.7);ready=true;
  };
  return {toWorld,toGrid,screenCamera,floors,walls,roofs,get objects(){return modelObjects();},refreshFloors,refreshWalls,refreshRoofs,interior,hiddenWalls,toggleDoor,doorAt,recoveryTargetAt,returnToDoor,navigation,heroPose,get frames(){return openWorld?tiles?.views||[]:[{surface,camera,last:occlusion?.last}];},get tileMetrics(){return tiles?.metrics;},get lastHero(){return lastHero;},get rotation(){return rotation;},get ready(){return ready;},get lastMs(){return lastMs;},get occlusion(){return occlusion;},surface,camera};

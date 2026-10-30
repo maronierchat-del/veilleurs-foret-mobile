@@ -1,0 +1,114 @@
+{
+  "status": "Taille et proportions retenues le 28 octobre 2026 ; design provisoire à revoir",
+  "integrated": false,
+  "uniformScale": 0.8,
+  "source": "C:\\Users\\natac\\Documents\\Code\\Veilleurs_Codex_Construction\\Veilleurs_Codex_Construction\\propositions\\alpha2\\propositions-graphiques\\paillasse-blender-v2\\paillasse-quatre-orientations.blend",
+  "sourceSHA256": "0196b3197215fbc7707c40f2a9223eec266bc83a6260165afc130936d820caaa",
+  "sourcePreserved": true,
+  "canvas": [
+    1024,
+    896
+  ],
+  "anchor": [
+    512,
+    640
+  ],
+  "renderScale": 2.65,
+  "centered": true,
+  "bounds": {
+    "min": [
+      -0.6547447167403937,
+      -0.3344000279903412,
+      -0.10735809973989366
+    ],
+    "max": [
+      0.6547447167403937,
+      0.3344000279903412,
+      20.433478194631036
+    ]
+  },
+  "size": [
+    1.3094894334807874,
+    0.6688000559806824
+  ],
+  "height": 20.433478194631036,
+  "constants": {
+    "back": [
+      -0.42108169198036194,
+      -0.7209754586219788,
+      0.5503495931625366
+    ],
+    "LU": 1.257941804066302,
+    "LZ": 0.011616046389935495
+  },
+  "rotations": [
+    {
+      "angle": 0,
+      "maxCameraErrorPixels": 0.0001404140073051065,
+      "bounds": {
+        "min": [
+          -0.6547447167403937,
+          -0.3344000279903412,
+          -0.10735809973989366
+        ],
+        "max": [
+          0.6547447167403937,
+          0.3344000279903412,
+          20.433478194631036
+        ]
+      },
+      "triangles": 21532
+    },
+    {
+      "angle": 90,
+      "maxCameraErrorPixels": 0.00014384961727977597,
+      "bounds": {
+        "min": [
+          -0.33440013269344976,
+          -0.6547448039054871,
+          -0.10735809973989366
+        ],
+        "max": [
+          0.33440013269344976,
+          0.6547448039054871,
+          20.433478194631036
+        ]
+      },
+      "triangles": 21532
+    },
+    {
+      "angle": 180,
+      "maxCameraErrorPixels": 0.0001456543139739775,
+      "bounds": {
+        "min": [
+          -0.6547447641230665,
+          -0.33440014719963074,
+          -0.10735809973989366
+        ],
+        "max": [
+          0.6547447641230665,
+          0.33440014719963074,
+          20.433478194631036
+        ]
+      },
+      "triangles": 21532
+    },
+    {
+      "angle": 270,
+      "maxCameraErrorPixels": 0.00016544196501193365,
+      "bounds": {
+        "min": [
+          -0.33440013269344976,
+          -0.6547448039054871,
+          -0.10735809973989366
+        ],
+        "max": [
+          0.33440013269344976,
+          0.6547448039054871,
+          20.433478194631036
+        ]
+      },
+      "triangles": 21532
+    }
+  ]
+}

@@ -4,15 +4,15 @@ const RoofPlacement=(()=>{
  const G=LabGeometry,R=RoofModules,kinds=new Set(['pan','angle','ridge','valley']);
  let api,mode=null,kind='pan',rot=0,hover=null,gesture=null,previewKey='',pointer=null;
  const same=(a,b)=>a.u===b.u&&a.v===b.v;
- const inZone=p=>BuildingArea.cell(p)&&(!BuildingArea.tools||p.u>=FloorPlacement.zone.minU&&p.u<=FloorPlacement.zone.maxU&&p.v>=FloorPlacement.zone.minV&&p.v<=FloorPlacement.zone.maxV);
+ const inZone=p=>BuildingArea.cell(p)&&(!BuildingArea.restricted||p.u>=FloorPlacement.zone.minU&&p.u<=FloorPlacement.zone.maxU&&p.v>=FloorPlacement.zone.minV&&p.v<=FloorPlacement.zone.maxV);
  const visibleZone=()=>BuildingArea.visible(Math.max(R.SEAT,...api.roofs.map(p=>p.base+R.RISE)));
  function sanitize(list,fixed){const result=[],seen=new Set(fixed.map(p=>p.u+':'+p.v));for(const p of Array.isArray(list)?list:[]){if(!BuildingArea.cell(p)||!kinds.has(p.kind)||![0,1,2,3].includes(p.rot)||!Number.isFinite(p.base)||p.base<R.SEAT||seen.has(p.u+':'+p.v))continue;const next={id:'toit-libre-'+p.u+':'+p.v,kind:p.kind,u:p.u,v:p.v,rot:p.rot,base:p.base};if(!R.joins([...fixed,...result,next]).every(j=>j.valid))continue;seen.add(p.u+':'+p.v);result.push(next);}return result;}
  function evaluate(p,action=mode){if(!hasTool('marteau'))return {valid:false,reason:'Équipe le marteau depuis le sac, ou fabrique-le.'};if(!inZone(p))return {valid:false,reason:'Choisis une case libre dans la région.'};
-  const found=api.roofs.find(q=>same(q,p));if(found&&api.roofs.indexOf(found)<16)return {valid:false,reason:'Le toit de la maison témoin est conservé.'};
+  const found=api.roofs.find(q=>same(q,p));if(found&&api.roofs.indexOf(found)<BuildingArea.fixedCount)return {valid:false,reason:'Le toit de la maison témoin est conservé.'};
   if(action==='remove')return {valid:!!found,p:found,reason:found?'Retirer ce module.':'Aucun toit ajouté sur cette case.'};
   if(action!=='add')return {valid:false,reason:'Choisis Poser ou Retirer.'};if(found)return {valid:false,reason:'Cette case possède déjà un toit.'};
   const solved=R.solve({id:'toit-libre-'+p.u+':'+p.v,kind,u:p.u,v:p.v,rot},api.roofs);
-  if(solved.valid&&!BuildingArea.tools&&state.objects.some(o=>{if(o.type!=='tree')return false;const q=api.toGrid(o.x,o.y);return q.u>=p.u-.25&&q.u<=p.u+1.25&&q.v>=p.v-.25&&q.v<=p.v+1.25&&R.height(solved.p,q.u,q.v)<SIZES.tree;}))return {...solved,valid:false,geometryValid:false,reason:'Un arbre traverse cet emplacement de toiture.'};
+  if(solved.valid&&!BuildingArea.restricted&&state.objects.some(o=>{if(o.type!=='tree')return false;const q=api.toGrid(o.x,o.y);return q.u>=p.u-.25&&q.u<=p.u+1.25&&q.v>=p.v-.25&&q.v<=p.v+1.25&&R.height(solved.p,q.u,q.v)<SIZES.tree;}))return {...solved,valid:false,geometryValid:false,reason:'Un arbre traverse cet emplacement de toiture.'};
   if(solved.valid&&!amount('toit'))return {...solved,valid:false,geometryValid:true,reason:'Aucun élément disponible : fabrique un lot à l’établi.'};
   return {...solved,geometryValid:solved.valid,reason:solved.valid?'Raccords compatibles · 1 élément par module.':solved.reason};
  }
