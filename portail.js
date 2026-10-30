@@ -7,7 +7,7 @@ const PortalConstruction=(()=>{
  M.specs[key]={name:'Portail',states:[''],size:[1.5,.6],centered:true};
  const present=()=>state.objects.some(o=>o.placed&&o.type===key);
  function grantTestResources(){
-  if(!MalleTrial.enabled||new URLSearchParams(location.search).get('ressources-portail')!=='1'||!state.expeditionPreparation||state.expeditionPreparation.testPortalResourcesGranted)return false;
+  if(!MalleTrial.testScene||new URLSearchParams(location.search).get('ressources-portail')!=='1'||!state.expeditionPreparation||state.expeditionPreparation.testPortalResourcesGranted)return false;
   if(!saveNow())return false;
   const before=structuredClone(state),backup=SAVE_KEY+'.avant-ressources-portail-test-v1';
   try{const raw=localStorage.getItem(SAVE_KEY);if(localStorage.getItem(backup)===null){localStorage.setItem(backup,raw);if(localStorage.getItem(backup)!==raw)throw Error('Secours non enregistré.');}}

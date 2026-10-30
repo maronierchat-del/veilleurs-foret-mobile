@@ -12,7 +12,7 @@ const FloorPlacement=(()=>{
   if(action!=='add')return {valid:false,reason:'Choisis Poser ou Retirer.'};
   if(found)return {valid:false,reason:'Cette case possède déjà un sol.'};
   // Vérifier aussi les emprises des ressources du jeu, sans les déplacer.
-  for(const o of state.objects){if(o.trialFixture||BushTransplant.isFixture(o)||CultivationPlacement.isFixture(o))continue;const q=api.toGrid(o.x,o.y);if(q.u>p.u-.25&&q.u<p.u+1.25&&q.v>p.v-.25&&q.v<p.v+1.25)return {valid:false,reason:'Un objet ou une ressource occupe cette case.'};}
+  for(const o of state.objects){if(o.trialFixture||BushTransplant.isFixture(o)||CultivationPlacement.isFixture(o)||MalleTrial.isFixture(o))continue;const q=api.toGrid(o.x,o.y);if(q.u>p.u-.25&&q.u<p.u+1.25&&q.v>p.v-.25&&q.v<p.v+1.25)return {valid:false,reason:'Un objet ou une ressource occupe cette case.'};}
   if(!amount('sol'))return {valid:false,reason:'Aucun sol disponible : fabrique un lot à l’établi.'};
   return {valid:true,reason:'Emplacement libre · 1 sol par case.'};
  }

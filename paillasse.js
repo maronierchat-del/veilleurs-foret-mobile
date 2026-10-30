@@ -9,7 +9,7 @@ const PaillasseConstruction=(()=>{
  function migrate(s){for(const o of s.objects)if(o.placed&&o.type===key){if(!Number.isInteger(o.rot))o.rot=0;o.paillasseVersion=1;}return s;}
  function grantTestResources(){
   const params=new URLSearchParams(location.search),cultures=params.get('ressources-cultures')==='1',marker=cultures?'nightTestResourcesGranted':'paillasseTestResourcesGranted';
-  if(!MalleTrial.enabled||(!cultures&&params.get('ressources-paillasse')!=='1')||state[marker]===true)return false;
+  if(!MalleTrial.testScene||(!cultures&&params.get('ressources-paillasse')!=='1')||state[marker]===true)return false;
   if(!saveNow())return false;
   const before=structuredClone(state),backup=SAVE_KEY+(cultures?'.avant-ressources-cultures-test-v1':'.avant-ressources-paillasse-test-v1');
   try{const raw=localStorage.getItem(SAVE_KEY);if(localStorage.getItem(backup)===null){localStorage.setItem(backup,raw);if(localStorage.getItem(backup)!==raw)throw Error('Secours non enregistré.');}}

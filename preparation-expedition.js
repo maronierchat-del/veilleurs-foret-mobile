@@ -57,7 +57,7 @@ const ExpeditionPrep=(()=>{
   updateHUD();renderPanel();return true;
  }
  function supplyTestMeals(){
-  if(!enabled||!state.expeditionPreparation||state.expeditionPreparation.testMealsGranted)return false;
+  if(!MalleTrial.testScene||!state.expeditionPreparation||state.expeditionPreparation.testMealsGranted)return false;
   if(!saveNow())return false;
   try{const key=SAVE_KEY+'.avant-plats-test-v1',raw=localStorage.getItem(SAVE_KEY);if(localStorage.getItem(key)===null){localStorage.setItem(key,raw);if(localStorage.getItem(key)!==raw)throw Error('Secours non enregistré.');}}catch{toast('Les plats n’ont pas été ajoutés : secours indisponible.');return false;}
   const items={...state.items},previous=structuredClone(state.expeditionPreparation);
@@ -78,7 +78,7 @@ const ExpeditionPrep=(()=>{
   const p=state.expeditionPreparation,s=summary();
   const rows=Object.entries(provisions).filter(([key])=>key==='baies'||amount(key)||(p.meals[key]||0)).map(([key,r])=>`<div class="prep-meal">${rowImage(key)}<div class="prep-food-label"><strong>${r.name}</strong><small>Sac : ${amount(key)} · ${r.cul} ${bolt()}</small></div>${stepper('withdraw','deposit',p.meals[key]||0,r.name,key,!p.meals[key],!amount(key)||s.meals+r.cul>cap||s.total+r.cul>cost)}</div>`).join('');
   const sports=[[-10,'release'],[-1,'release'],[1,'reserve'],[10,'reserve']].map(([delta,action])=>{const n=Math.abs(delta),disabled=delta<0?s.sport<n:state.sport<n||s.total+n>cost;return `<button type="button" data-prep="${action}" data-quantity="${n}" aria-label="${delta<0?'Retirer':'Ajouter'} ${n} énergie sportive" ${disabled?'disabled':''}>${delta<0?'−':'+'}${n}</button>`;}).join('');
-  return `<div class="prep-sport-row"><strong>Énergie sportive</strong><div class="prep-stepper prep-sport-buttons">${sports}</div></div><h3>Repas</h3>${p.testMealsGranted?'':'<button class="btn full secondary" data-prep-test-meals>Ajouter les plats pour les essais</button>'}${rows}<button class="btn full prep-depart" disabled>Partir en expédition</button><p class="soft">${PortalConstruction.present()?'Portail du Refuge construit.':'Construisez un portail dans le Refuge avant le départ.'}</p><p class="soft">Première expédition : départ indisponible pour le moment.</p>`;
+  return `<div class="prep-sport-row"><strong>Énergie sportive</strong><div class="prep-stepper prep-sport-buttons">${sports}</div></div><h3>Repas</h3>${MalleTrial.testScene&&!p.testMealsGranted?'<button class="btn full secondary" data-prep-test-meals>Ajouter les plats pour les essais</button>':''}${rows}<button class="btn full prep-depart" disabled>Partir en expédition</button><p class="soft">${PortalConstruction.present()?'Portail du Refuge construit.':'Construisez un portail dans le Refuge avant le départ.'}</p><p class="soft">Première expédition : départ indisponible pour le moment.</p>`;
  }
  document.addEventListener('click',e=>{const button=e.target.closest('[data-prep]');if(!button)return;change(button.dataset.prep,button.dataset.key,Number(button.dataset.quantity||1));});
  if(enabled){const base=newState;newState=()=>{const s=base();s.expeditionPreparation=empty();return s;};}

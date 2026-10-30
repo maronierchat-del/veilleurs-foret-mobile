@@ -33,6 +33,7 @@ const CRAFT={
  feu:{name:'Feu de camp',kind:'installation',materials:{bois:5,pierre:3},spr:'feu'},
  etabli:{name:'Établi',kind:'installation',materials:{bois:10,pierre:5,fibres:4},spr:'etabli'},
  coffre:{name:'Coffre',kind:'installation',materials:{bois:8,fibres:2},spr:'coffre'},
+ malle:{name:'Malle d’expédition',kind:'installation',materials:{bois:8,fibres:2},bench:true,spr:'coffre'},
  paillasse:{name:'Paillasse',kind:'installation',materials:{bois:4,fibres:6},spr:'paillasse'},
  marmite:{name:'Marmite',kind:'installation',materials:{bois:4,pierre:6},spr:'marmite'},
  potager:{name:'Potager',kind:'installation',materials:{bois:3,fibres:4},spr:'potager'},
@@ -53,7 +54,7 @@ const FOOD={
  carottes_cuites:{name:'Carottes cuites',materials:{carotte:2},qty:2,cul:5,station:'feu'},
  champignons_cuits:{name:'Champignons cuits',materials:{champignon:4},qty:2,cul:5,station:'feu'},
  soupe:{name:'Soupe de carottes',materials:{carotte:4},qty:2,cul:10,station:'marmite'},
- ragout:{name:'Ragoût forestier',materials:{champignon:2,baies:4},qty:2,cul:10,station:'marmite'}
+ ragout:{name:'Ragoût forestier',materials:{champignon:4,baies:2},qty:2,cul:10,station:'marmite'}
 };
 const LABEL={bois:'Bois',pierre:'Pierre',fibres:'Fibres végétales',carotte:'Carottes',baies:'Baies',champignon:'Champignons',jeunes_plants:'Jeunes plants de carottes',arbuste:'Arbuste transplanté'};
 for(const [k,v] of Object.entries(CRAFT))LABEL[k]=v.name;

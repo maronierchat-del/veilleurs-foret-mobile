@@ -9,7 +9,7 @@ const BoundaryMist=(()=>{
  function contains(x,y){return BuildingArea.tools||x>=edge&&y>=edge&&x<=WORLD.width-edge&&y<=WORLD.height-edge;}
  function interact(x,y){
   if(BuildingArea.tools||opacity(x,y)<.25)return false;
-  const hasTrunk=state.objects.some(o=>o.placed&&o.type==='coffre');
+  const hasTrunk=state.objects.some(o=>MalleTrial.isFixture(o));
   ui.auto=null;dismissObjectMenu();
   toast(hasTrunk?'Préparez une expédition dans votre malle pour découvrir ce qui se cache au-delà de la brume.':'Construisez une malle d’expédition pour découvrir ce qui se cache au-delà de la brume.');
   return true;
