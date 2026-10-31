@@ -4,15 +4,33 @@
 const ConstructionTrial=(()=>{
  const G=LabGeometry,M=ValidatedModel,origin={x:1500,y:1400},openWorld=!BuildingArea.restricted;let tiles;
  const camera={x:180,y:350,zoom:1},surface=document.createElement('canvas');
+ // Cache de fond opaque, à la densité d’affichage existante. La marge permet
+ // de déplacer la caméra sans recomposer terrain et brume à chaque image.
+ const background=document.createElement('canvas'),backgroundContext=background.getContext('2d',{alpha:false});
+ const frameMetrics={drawn:0,skipped:0,backgroundBuilds:0};let backgroundView=null,backgroundKey='',lastSceneKey='';
+ function drawBackground(){
+  const c=ui.camera,pad=96,key=JSON.stringify([W,H,dpr,c.zoom,c.squash,!!ui.placing,!!groundPattern,patches.filter(p=>p.surface).length]);
+  const dx=backgroundView?(backgroundView.camera.x-c.x)*c.zoom:0,dy=backgroundView?(backgroundView.camera.y-c.y)*c.zoom*c.squash:0;
+  if(key!==backgroundKey||!backgroundView||Math.abs(dx)>pad-4||Math.abs(dy)>pad-4){
+   backgroundView={camera:{...c},width:W+pad*2,height:H+pad*2,density:dpr};
+   background.width=Math.ceil(backgroundView.width*dpr);background.height=Math.ceil(backgroundView.height*dpr);
+   drawGround(backgroundContext,backgroundView);BoundaryMist.draw(backgroundContext,backgroundView);
+   backgroundKey=key;frameMetrics.backgroundBuilds++;
+  }
+  const x=-pad+(backgroundView.camera.x-c.x)*c.zoom,y=-pad+(backgroundView.camera.y-c.y)*c.zoom*c.squash;
+  ctx.drawImage(background,x,y,backgroundView.width,backgroundView.height);
+ }
+ function sceneKey(){return JSON.stringify([ready,W,H,dpr,ui.camera,state.player,ui.walkMoving&&ui.walkClock<.18,ui.selection,ui.open,ui.tab,renderFloors,renderWalls,renderRoofs,state.objects.map(o=>[o.id,o.type,o.placed,o.x,o.y,o.rot,o.stage,o.harvested,o.seeded,o.trialFixture,o.expeditionPreview])]);}
+ const originalResize=resize;resize=function(){lastSceneKey='';backgroundKey='';originalResize();};
  surface.width=1100;surface.height=850;
  const context=surface.getContext('2d',{willReadFrequently:true}),floorSurface=document.createElement('canvas');floorSurface.width=surface.width;floorSurface.height=surface.height;
  const fixedCount=BuildingArea.fixedCount;
  const floors=Array.from({length:fixedCount},(_,i)=>({key:'sol',u:i%4,v:Math.floor(i/4)}));
  const roofs=[],walls=[],objects=[],images={};let rotation=0,occlusion,ready=false,lastKey='',lastMs=0,renderFloors=floors,renderWalls=walls,renderRoofs=roofs;
  const modelObjects=()=>[...objects,...CultivationPlacement.models(),...MalleTrial.models()];
- function refreshRoofs(preview=null){renderRoofs=preview||roofs;lastKey='';}
- function refreshWalls(preview=null){renderWalls=preview||walls;lastKey='';}
- function refreshFloors(preview=null){renderFloors=preview||floors;if(openWorld){lastKey='';return;}floorSurface.getContext('2d').clearRect(0,0,surface.width,surface.height);FloorProposal.draw(floorSurface.getContext('2d'),renderFloors,(u,v,z=0)=>G.project(u,v,camera,z),1);lastKey='';}
+ function refreshRoofs(preview=null){renderRoofs=preview||roofs;lastKey='';lastSceneKey='';}
+ function refreshWalls(preview=null){renderWalls=preview||walls;lastKey='';lastSceneKey='';}
+ function refreshFloors(preview=null){renderFloors=preview||floors;lastSceneKey='';if(openWorld){lastKey='';return;}floorSurface.getContext('2d').clearRect(0,0,surface.width,surface.height);FloorProposal.draw(floorSurface.getContext('2d'),renderFloors,(u,v,z=0)=>G.project(u,v,camera,z),1);lastKey='';}
  const toWorld=(u,v)=>{const p=G.project(u,v,{x:0,y:0,zoom:1});return {x:origin.x+p.x,y:origin.y+p.y/.7};};
  const toGrid=(x,y)=>G.unproject(x-origin.x,(y-origin.y)*.7,{x:0,y:0,zoom:1});
  const turn=([u,v],r)=>[[u,v],[4-v,u],[4-u,4-v],[v,4-u]][r];
@@ -187,7 +205,11 @@ const ConstructionTrial=(()=>{
   lastMs=performance.now()-start;lastHero=drawHero();ctx.save();clipOutside();outside.filter(o=>o.y>state.player.y).forEach(drawObject);ctx.restore();FloorPlacement.draw();WallPlacement.draw();RoofPlacement.draw();BushTransplant.drawPreview();CultivationPlacement.drawPreview();MalleTrial.drawPreview();ConstructionUI.update();EdgeMarkers.update();
  }
  let lastHero=null;
- render=function(){BoundaryMist.clampCamera();ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);drawGround();BoundaryMist.draw();if(openWorld&&ready){worldFrame();return;}
+ render=function(){BoundaryMist.clampCamera();
+  const dynamic=ui.placing||FloorPlacement.mode||WallPlacement.mode||RoofPlacement.mode,key=sceneKey();
+  if(!dynamic&&key===lastSceneKey){frameMetrics.skipped++;ConstructionUI.update();EdgeMarkers.update();return;}
+  lastSceneKey=dynamic?'':key;frameMetrics.drawn++;
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);drawBackground();if(openWorld&&ready){worldFrame();return;}
   // Le cache contient les sprites proches avec leurs profondeurs ; les autres gardent le rendu du jeu.
   const set=new Set(sceneObjects().map(e=>e.o.id));
   const outside=state.objects.filter(o=>!o.trialFixture&&!CultivationPlacement.isFixture(o)&&!MalleTrial.isFixture(o)&&!set.has(o.id)).sort((a,b)=>a.y-b.y);
@@ -227,7 +249,7 @@ const ConstructionTrial=(()=>{
   images.hero=IMAGES.person;const depths=await MeshOcclusion.unpack();Object.assign(depths,await MalleTrial.loadDepths(),await PortalConstruction.loadDepths(),await PaillasseConstruction.loadDepths());occlusion=MeshOcclusion.create(context,G,M,depths);if(openWorld)tiles=ConstructionTiles.create({G,M,images,depths});
   ui.camera.zoom=W<650?.5:1;$('zoomValue').textContent=Math.round(ui.camera.zoom*100)+' %';ui.camera.y-=120/(ui.camera.zoom*.7);ready=true;
  };
- return {toWorld,toGrid,screenCamera,floors,walls,roofs,get objects(){return modelObjects();},refreshFloors,refreshWalls,refreshRoofs,interior,hiddenWalls,toggleDoor,doorAt,recoveryTargetAt,returnToDoor,navigation,heroPose,get frames(){return openWorld?tiles?.views||[]:[{surface,camera,last:occlusion?.last}];},get tileMetrics(){return tiles?.metrics;},get lastHero(){return lastHero;},get rotation(){return rotation;},get ready(){return ready;},get lastMs(){return lastMs;},get occlusion(){return occlusion;},surface,camera};
+ return {toWorld,toGrid,screenCamera,floors,walls,roofs,get objects(){return modelObjects();},refreshFloors,refreshWalls,refreshRoofs,interior,hiddenWalls,toggleDoor,doorAt,recoveryTargetAt,returnToDoor,navigation,heroPose,get frames(){return openWorld?tiles?.views||[]:[{surface,camera,last:occlusion?.last}];},get tileMetrics(){return tiles?.metrics;},get renderMetrics(){return {...frameMetrics,backgroundBytes:background.width*background.height*4};},get lastHero(){return lastHero;},get rotation(){return rotation;},get ready(){return ready;},get lastMs(){return lastMs;},get occlusion(){return occlusion;},surface,camera};
 })();
 window.constructionTrial=ConstructionTrial;
 boot();

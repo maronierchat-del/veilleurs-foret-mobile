@@ -27,15 +27,16 @@ const BoundaryMist=(()=>{
   const bend=(noise(x/143,y/167)-.5)*60+(noise(x/39+14,y/47-9)-.5)*20;
   return 1-smooth((distance+bend+20)/120);
  }
- function draw(){
-  if(BuildingArea.tools||!W||!H)return;
-  const c=ui.camera,z=c.zoom,k=c.squash,halfX=W/(2*z),halfY=H/(2*z*k);
+ function draw(target=ctx,view=null){
+  const width=view?.width??W,height=view?.height??H,density=view?.density??dpr;
+  if(BuildingArea.tools||!width||!height)return;
+  const c=view?.camera||ui.camera,z=c.zoom,k=c.squash,halfX=width/(2*z),halfY=height/(2*z*k);
   if(c.x-halfX>210&&c.y-halfY>210&&c.x+halfX<WORLD.width-210&&c.y+halfY<WORLD.height-210)return;
   const stepX=32/z,stepY=32/(z*k),ax=Math.floor(c.x/stepX)*stepX,ay=Math.floor(c.y/stepY)*stepY;
-  const next=[W,H,z,k,ax,ay].join(':');
+  const next=[width,height,z,k,ax,ay].join(':');
   if(next!==key){
-   const start=performance.now();key=next;origin={x:ax-(W/2+padding)/z,y:ay-(H/2+padding)/(z*k)};
-   layer.width=Math.ceil((W+padding*2)/scale);layer.height=Math.ceil((H+padding*2)/scale);
+   const start=performance.now();key=next;origin={x:ax-(width/2+padding)/z,y:ay-(height/2+padding)/(z*k)};
+   layer.width=Math.ceil((width+padding*2)/scale);layer.height=Math.ceil((height+padding*2)/scale);
    const paint=layer.getContext('2d'),data=paint.createImageData(layer.width,layer.height),pixels=data.data;
    for(let y=0;y<layer.height;y++)for(let x=0;x<layer.width;x++){
     const wx=origin.x+(x+.5)*scale/z,wy=origin.y+(y+.5)*scale/(z*k),alpha=opacity(wx,wy);if(!alpha)continue;
@@ -44,7 +45,7 @@ const BoundaryMist=(()=>{
    }
    paint.putImageData(data,0,0);lastBuildMs=performance.now()-start;builds++;
   }
-  ctx.save();ctx.imageSmoothingEnabled=true;ctx.drawImage(layer,W/2+(origin.x-c.x)*z,H/2+(origin.y-c.y)*z*k,layer.width*scale,layer.height*scale);ctx.restore();
+  target.save();target.setTransform(density,0,0,density,0,0);target.imageSmoothingEnabled=true;target.drawImage(layer,width/2+(origin.x-c.x)*z,height/2+(origin.y-c.y)*z*k,layer.width*scale,layer.height*scale);target.restore();
  }
  return {draw,clampCamera,bounds,contains,opacity,interact,get metrics(){return {lastBuildMs,builds};}};
 })();

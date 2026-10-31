@@ -798,19 +798,19 @@ function makePatch(p){const rx=Math.ceil(p.rx),ry=Math.ceil(p.ry),w=rx*2,h=ry*2;
  c.fillStyle=g;c.fillRect(-1,-1,2,2);
  return surface;
 }
-function drawGround(){let c=ui.camera,z=c.zoom,k=c.squash,halfX=W/(2*z),halfY=H/(2*z*k);
- ctx.save();ctx.setTransform(dpr*z,0,0,dpr*z*k,dpr*(W/2-c.x*z),dpr*(H/2-c.y*z*k));
+function drawGround(target=ctx,view=null){const c=view?.camera||ui.camera,width=view?.width??W,height=view?.height??H,density=view?.density??dpr,z=c.zoom,k=c.squash,halfX=width/(2*z),halfY=height/(2*z*k);
+ target.save();target.setTransform(density*z,0,0,density*z*k,density*(width/2-c.x*z),density*(height/2-c.y*z*k));
  const left=c.x-halfX-3,top=c.y-halfY-3,rw=halfX*2+6,rh=halfY*2+6;
- if(groundPattern){ctx.fillStyle=groundPattern;ctx.fillRect(left,top,rw,rh);}else{ctx.fillStyle='#5f6439';ctx.fillRect(left,top,rw,rh);}
+ if(groundPattern){target.fillStyle=groundPattern;target.fillRect(left,top,rw,rh);}else{target.fillStyle='#5f6439';target.fillRect(left,top,rw,rh);}
  for(let p of patches){if(p.x+p.rx<left||p.x-p.rx>left+rw||p.y+p.ry<top||p.y-p.ry>top+rh)continue;
-  if(p.surface)ctx.drawImage(p.surface,p.x-p.rx,p.y-p.ry);
+  if(p.surface)target.drawImage(p.surface,p.x-p.rx,p.y-p.ry);
  }
- if(ui.placing){let span=64;ctx.save();ctx.strokeStyle='#ddd9b127';ctx.lineWidth=1/z;ctx.beginPath();
+ if(ui.placing){let span=64;target.save();target.strokeStyle='#ddd9b127';target.lineWidth=1/z;target.beginPath();
  const xa=Math.floor(left/span)*span,ya=Math.floor(top/span)*span;
- for(let x=xa;x<left+rw;x+=span){ctx.moveTo(x,top);ctx.lineTo(x,top+rh);}
- for(let y=ya;y<top+rh;y+=span){ctx.moveTo(left,y);ctx.lineTo(left+rw,y);}
- ctx.stroke();ctx.restore();}
- ctx.restore();}
+ for(let x=xa;x<left+rw;x+=span){target.moveTo(x,top);target.lineTo(x,top+rh);}
+ for(let y=ya;y<top+rh;y+=span){target.moveTo(left,y);target.lineTo(left+rw,y);}
+ target.stroke();target.restore();}
+ target.restore();}
 function drawOval(x,y,rx,ry,color){ctx.save();ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fill();ctx.restore();}
 function drawSprite(spr,x,y,height,alpha=1){let img=IMAGES[spr];if(!img)return;
  let h=height*ui.camera.zoom,w=h*img.width/img.height,pt=project(x,y);
