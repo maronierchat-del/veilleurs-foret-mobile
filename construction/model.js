@@ -24,9 +24,13 @@
  const distance=(p,a,b)=>{const x=b[0]-a[0],y=b[1]-a[1],t=Math.max(0,Math.min(1,((p[0]-a[0])*x+(p[1]-a[1])*y)/(x*x+y*y)));return Math.hypot(p[0]-a[0]-t*x,p[1]-a[1]-t*y);};
  function walkWallPolys(w,G){if(w.key!=='porte'||!w.open)return [wallPoly(w,G)];const [a,b]=G.ends(w),dx=b[0]-a[0],dy=b[1]-a[1],t=.035;return [...[[0,.13],[.87,1]].map(([lo,hi])=>[[a[0]+dx*lo-dy*t,a[1]+dy*lo+dx*t],[a[0]+dx*hi-dy*t,a[1]+dy*hi+dx*t],[a[0]+dx*hi+dy*t,a[1]+dy*hi-dx*t],[a[0]+dx*lo+dy*t,a[1]+dy*lo-dx*t]]),HouseDoor.geometry(w,G).polygon];}
  function portalFeet(p){const a=anchor(p);return [-.445,.445].map(u=>[[u-.22,-.22],[u+.22,-.22],[u+.22,.22],[u-.22,.22]].map(q=>{const r=turn(q,p.rot);return[a[0]+r[0],a[1]+r[1]];}));}
+ function blockedChecker(objects,walls,doors,G){
+  const shapes=[...objects.flatMap(p=>p.key==='portail'?portalFeet(p):polygons(p,doors)),...walls.flatMap(w=>walkWallPolys(w,G))].map(poly=>({poly,left:Math.min(...poly.map(p=>p[0]))-.1,right:Math.max(...poly.map(p=>p[0]))+.1,top:Math.min(...poly.map(p=>p[1]))-.1,bottom:Math.max(...poly.map(p=>p[1]))+.1}));
+  return point=>shapes.some(({poly,left,right,top,bottom})=>point[0]>=left&&point[0]<=right&&point[1]>=top&&point[1]<=bottom&&(contains(point,poly)||poly.some((a,i)=>distance(point,a,poly[(i+1)%poly.length])<.1)));
+ }
  function blocked(point,objects,walls,doors,G){const polys=[...objects.flatMap(p=>p.key==='portail'?portalFeet(p):polygons(p,doors)),...walls.flatMap(w=>walkWallPolys(w,G))];return polys.some(poly=>contains(point,poly)||poly.some((a,i)=>distance(point,a,poly[(i+1)%poly.length])<.1));}
  function walk(from,to,objects,walls,doors,G){let result=[...from];const steps=Math.ceil(Math.hypot(to[0]-from[0],to[1]-from[1])*80);for(let i=1;i<=steps;i++){const q=from.map((v,j)=>v+(to[j]-v)*i/steps);if(blocked(q,objects,walls,doors,G))break;result=q;}return result;}
- return {specs,turn,snap,file,dimensions,rect,anchor,bounds,hull,polygons,overlap,wallPoly,evaluate,contains,blocked,walk};
+ return {specs,turn,snap,file,dimensions,rect,anchor,bounds,hull,polygons,overlap,wallPoly,evaluate,contains,blocked,blockedChecker,walk};
 });
 
 

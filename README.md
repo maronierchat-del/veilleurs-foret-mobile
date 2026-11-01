@@ -1,6 +1,6 @@
 # Les Veilleurs de la Forêt — Alpha 2
 
-Mise à jour du 31 octobre 2026 : optimisation de la fluidité de la carte, cache du terrain et de la brume, redessins évités au repos. Apparence et sauvegardes conservées.
+Mise à jour du 1er novembre 2026 : calculs graphiques en arrière-plan et recherche de chemin par étapes pour les grands glissements de carte et les nouveaux touchers pendant la marche. Sauvegardes conservées. Essai sur téléphone en cours : des ralentissements intermittents restent à confirmer.
 
 Malle d’expédition constructible à l’établi (8 bois + 2 fibres + 4 énergie), ragoût à 4 champignons + 2 baies pour 2 portions de 10 énergie. Lit et cultures nocturnes, cuisine et pépinière, pose à distance. Départ en expédition encore indisponible.
 

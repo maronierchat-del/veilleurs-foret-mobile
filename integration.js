@@ -7,11 +7,22 @@ const ConstructionTrial=(()=>{
  // Cache de fond opaque, à la densité d’affichage existante. La marge permet
  // de déplacer la caméra sans recomposer terrain et brume à chaque image.
  const background=document.createElement('canvas'),backgroundContext=background.getContext('2d',{alpha:false});
- const frameMetrics={drawn:0,skipped:0,backgroundBuilds:0};let backgroundView=null,backgroundKey='',lastSceneKey='';
+ const frameMetrics={drawn:0,skipped:0,backgroundBuilds:0};let backgroundView=null,backgroundKey='',lastSceneKey='',calculations=null,pendingBackground=null;
  function drawBackground(){
   const c=ui.camera,pad=96,key=JSON.stringify([W,H,dpr,c.zoom,c.squash,!!ui.placing,!!groundPattern,patches.filter(p=>p.surface).length]);
   const dx=backgroundView?(backgroundView.camera.x-c.x)*c.zoom:0,dy=backgroundView?(backgroundView.camera.y-c.y)*c.zoom*c.squash:0;
-  if(key!==backgroundKey||!backgroundView||Math.abs(dx)>pad-4||Math.abs(dy)>pad-4){
+  if(calculations?.metrics.failed){calculations.close();calculations=null;pendingBackground=null;for(const p of patches)if(!p.surface)p.surface=makePatch(p);}
+  if(calculations){
+   const valid=backgroundView&&key===backgroundKey&&Math.abs(dx)<=pad-4&&Math.abs(dy)<=pad-4;
+   const pending=pendingBackground,covered=pending&&pending.key===key&&Math.abs((pending.view.camera.x-c.x)*c.zoom)<=pad-4&&Math.abs((pending.view.camera.y-c.y)*c.zoom*c.squash)<=pad-4;
+   if((!valid||Math.abs(dx)>pad/2||Math.abs(dy)>pad/2)&&!covered){
+    const view={camera:{...c},width:W+pad*2,height:H+pad*2,density:dpr},signature=JSON.stringify([key,view.camera]);pendingBackground={key,view,signature};
+    calculations.request('background',signature,{type:'background',view,placing:!!ui.placing},()=>true,result=>{if(pendingBackground?.signature===signature)pendingBackground=null;const same=W===view.width-pad*2&&H===view.height-pad*2&&dpr===view.density&&ui.camera.zoom===view.camera.zoom&&ui.camera.squash===view.camera.squash;
+     if(same&&Math.abs((view.camera.x-ui.camera.x)*view.camera.zoom)<=pad-4&&Math.abs((view.camera.y-ui.camera.y)*view.camera.zoom*view.camera.squash)<=pad-4){background.width=result.bitmap.width;background.height=result.bitmap.height;backgroundContext.drawImage(result.bitmap,0,0);backgroundView=view;backgroundKey=key;frameMetrics.backgroundBuilds++;}result.bitmap.close();});
+   }
+   if(!valid){SceneryPaint.draw(ctx,{camera:c,width:W,height:H,density:dpr},groundPattern,[],!!ui.placing);ctx.save();ctx.setTransform(dpr*c.zoom,0,0,dpr*c.zoom*c.squash,dpr*(W/2-c.x*c.zoom),dpr*(H/2-c.y*c.zoom*c.squash));ctx.fillStyle='#939e8d';const left=c.x-W/(2*c.zoom),top=c.y-H/(2*c.zoom*c.squash),right=left+W/c.zoom,bottom=top+H/(c.zoom*c.squash);if(left<55)ctx.fillRect(left,top,55-left,bottom-top);if(right>WORLD.width-55)ctx.fillRect(WORLD.width-55,top,right-WORLD.width+55,bottom-top);if(top<55)ctx.fillRect(left,top,right-left,55-top);if(bottom>WORLD.height-55)ctx.fillRect(left,WORLD.height-55,right-left,bottom-WORLD.height+55);ctx.restore();}
+   if(!backgroundView||key!==backgroundKey)return;
+  }else if(key!==backgroundKey||!backgroundView||Math.abs(dx)>pad-4||Math.abs(dy)>pad-4){
    backgroundView={camera:{...c},width:W+pad*2,height:H+pad*2,density:dpr};
    background.width=Math.ceil(backgroundView.width*dpr);background.height=Math.ceil(backgroundView.height*dpr);
    drawGround(backgroundContext,backgroundView);BoundaryMist.draw(backgroundContext,backgroundView);
@@ -90,9 +101,11 @@ const ConstructionTrial=(()=>{
  canCraft=function(key){return (!['feu','etabli'].includes(key)||hasTool('marteau'))&&([...stockPieces,'toit','feu','marmite'].includes(key)||CultivationPlacement.supports(key)||CRAFT[key]?.kind==='outil')&&originalCanCraft(key);};
  const originalProtectedSpot=protectedSpot;
  protectedSpot=function(x,y){if(originalProtectedSpot(x,y))return true;if(!openWorld)return false;const q=toGrid(x,y);if([...floors,...roofs].some(p=>q.u>=p.u&&q.u<=p.u+1&&q.v>=p.v&&q.v<=p.v+1))return true;return walls.some(w=>{const [a,b]=G.ends(w),p=toWorld((a[0]+b[0])/2,(a[1]+b[1])/2);return Math.hypot(x-p.x,y-p.y)<192;});};
- const originalWalk=canWalk;
- canWalk=function(x,y){const q=toGrid(x,y);return !BushTransplant.blocked(q)&&!M.blocked([q.u,q.v],modelObjects(),walls,DoorGeometry,G)&&originalWalk(x,y);};
- const search=ObstacleNavigation.create((x,y)=>canWalk(x,y),WORLD),navigation={clear:search.clear,plan(from,to,radius=0){const a=toGrid(from.x,from.y),b=toGrid(to.x,to.y),inside=q=>q.u>=0&&q.u<4&&q.v>=0&&q.v<4;if(fixedCount&&inside(a)!==inside(b)&&!walls.find(w=>w.key==='porte').open)return null;return search.plan(from,to,radius);}};
+ const originalWalk=canWalk;let searchBlocked=null;
+ canWalk=function(x,y){const q=toGrid(x,y);return !BushTransplant.blocked(q)&&!(searchBlocked?searchBlocked([q.u,q.v]):M.blocked([q.u,q.v],modelObjects(),walls,DoorGeometry,G))&&originalWalk(x,y);};
+ const search=ObstacleNavigation.create((x,y)=>canWalk(x,y),WORLD);
+ function closedBoundary(from,to){const a=toGrid(from.x,from.y),b=toGrid(to.x,to.y),inside=q=>q.u>=0&&q.u<4&&q.v>=0&&q.v<4;return fixedCount&&inside(a)!==inside(b)&&!walls.find(w=>w.key==='porte').open;}
+ const navigation={clear:search.clear,plan(from,to,radius=0){return closedBoundary(from,to)?null:search.plan(from,to,radius);},begin(from,to,radius=0){if(closedBoundary(from,to))return {step:()=>({done:true,route:null})};const job=search.begin(from,to,radius);return {step(budget=3){searchBlocked=M.blockedChecker(modelObjects(),walls,DoorGeometry,G);try{return job.step(budget);}finally{searchBlocked=null;}}};}};
  // Les fenêtres et murs transparents restent physiques ; le banc est déjà testé par M.
  SIZES.person=SIZES.right=SIZES.left=SIZES.back=110;
  function interior(){const q=toGrid(state.player.x,state.player.y);return !!fixedCount&&q.u>=0&&q.u<4&&q.v>=0&&q.v<4;}
@@ -110,7 +123,7 @@ const ConstructionTrial=(()=>{
  }
  const screenCamera=()=>{const p=project(origin.x,origin.y);return {x:p.x,y:p.y,zoom:ui.camera.zoom};};
  function doorAt(x,y){
-  if(!ready)return false;for(const p of walls.filter(w=>w.key==='porte')){const c=screenCamera(),pr=(u,v,z=0)=>G.project(u,v,c,z),m=InteriorWallArt.describe(p,G.ends,pr,floors),o=m.opening;
+  if(!ready)return false;if(sceneKey()!==lastSceneKey)render();for(const p of walls.filter(w=>w.key==='porte')){const c=screenCamera(),pr=(u,v,z=0)=>G.project(u,v,c,z),m=InteriorWallArt.describe(p,G.ends,pr,floors),o=m.opening;
   const index=walls.indexOf(p),targets=p.open?[{points:HouseDoor.geometry(p,G).corners.map(q=>pr(q.u,q.v,q.z)),owner:(openWorld?5000:300)+index},{points:[m.point(o.left-.055,0),m.point(o.right+.055,0),m.point(o.right+.055,o.top+6),m.point(o.left-.055,o.top+6)],owner:(openWorld?1000:10)+index}]:[{points:[m.point(o.left+.025,2),m.point(o.right-.025,2),m.point(o.right-.025,o.top-2),m.point(o.left+.025,o.top-2)],owner:(openWorld?1000:10)+index}];
   const q=G.unproject(x,y,c),pt=G.project(q.u,q.v,camera),px0=Math.floor(pt.x),py0=Math.floor(pt.y),sample=openWorld&&tiles.sample(pt.x-camera.x,pt.y-camera.y),px=sample?sample.x:px0,py=sample?sample.y:py0,d=openWorld?sample?.tile.last:occlusion.last;
   for(const target of targets){if(!M.contains([x,y],target.points.map(p=>[p.x,p.y])))continue;const layer=d?.layers.find(l=>l.owner===target.owner);
@@ -123,6 +136,7 @@ const ConstructionTrial=(()=>{
  // Même pixel et mêmes propriétaires que le rendu : ne jamais viser une couche cachée.
  function recoveryTargetAt(x,y){
   if(!ready)return null;
+  if(sceneKey()!==lastSceneKey)render();
   const q=G.unproject(x,y,screenCamera()),p=G.project(q.u,q.v,camera),sample=openWorld&&tiles?.sample(p.x-camera.x,p.y-camera.y),d=openWorld?sample?.tile.last:occlusion?.last,px=sample?sample.x:Math.floor(p.x),py=sample?sample.y:Math.floor(p.y);
   const inside=d&&px>=0&&py>=0&&px<d.W&&py<d.H;let owner=inside?d.owners[py*d.W+px]:0;
   // Les murs intérieurs à 22 % restent cliquables sur leurs pixels visibles.
@@ -140,7 +154,7 @@ const ConstructionTrial=(()=>{
   if(objectAt(x,y))return null;
   const piece=floors.find(f=>f.u===Math.floor(q.u)&&f.v===Math.floor(q.v));return piece?{kind:'floor',piece}:null;
  }
- objectAt=function(x,y){const c=screenCamera(),q=G.unproject(x,y,c),p=G.project(q.u,q.v,camera),d=occlusion?.last,px=Math.floor(p.x),py=Math.floor(p.y);
+ objectAt=function(x,y){if(ready&&sceneKey()!==lastSceneKey)render();const c=screenCamera(),q=G.unproject(x,y,c),p=G.project(q.u,q.v,camera),d=occlusion?.last,px=Math.floor(p.x),py=Math.floor(p.y);
   const sample=openWorld&&tiles?.sample(p.x-camera.x,p.y-camera.y),owner=openWorld?(sample?.tile.last.owners[sample.index]||0):d&&px>=0&&py>=0&&px<d.W&&py<d.H?d.owners[py*d.W+px]:0;
   if(owner===1&&fixedCount)return state.objects.find(o=>o.trialFixture==='bench');
   const model=modelObjects()[owner-1];if(model?.sourceId)return state.objects.find(o=>o.id===model.sourceId);
@@ -246,10 +260,15 @@ const ConstructionTrial=(()=>{
   walkLeft=document.createElement('canvas');walkLeft.width=IMAGES.walk1.width;walkLeft.height=IMAGES.walk1.height;const flip=walkLeft.getContext('2d');flip.translate(walkLeft.width,0);flip.scale(-1,1);flip.drawImage(IMAGES.walk1,0,0);
   for(const image of [IMAGES.right,IMAGES.left,IMAGES.back,IMAGES.walk1,walkLeft]){const measure=document.createElement('canvas');measure.width=image.width;measure.height=image.height;const mc=measure.getContext('2d');mc.drawImage(image,0,0);const pixels=mc.getImageData(0,0,measure.width,measure.height).data;let top=image.height,bottom=0;for(let y=0;y<image.height;y++)for(let x=0;x<image.width;x++)if(pixels[(y*image.width+x)*4+3]>20){top=Math.min(top,y);bottom=Math.max(bottom,y+1);}heroMetrics.set(image,{height:bottom-top,bottom});}
   Object.assign(images,await CultivationPlacement.load(),await MalleTrial.load());refreshFloors();
-  images.hero=IMAGES.person;const depths=await MeshOcclusion.unpack();Object.assign(depths,await MalleTrial.loadDepths(),await PortalConstruction.loadDepths(),await PaillasseConstruction.loadDepths());occlusion=MeshOcclusion.create(context,G,M,depths);if(openWorld)tiles=ConstructionTiles.create({G,M,images,depths});
+  images.hero=IMAGES.person;const depths=await MeshOcclusion.unpack();Object.assign(depths,await MalleTrial.loadDepths(),await PortalConstruction.loadDepths(),await PaillasseConstruction.loadDepths());occlusion=MeshOcclusion.create(context,G,M,depths);if(openWorld)tiles=ConstructionTiles.create({G,M,images,depths,getCalculations:()=>calculations});
+  initializeSceneGraphics=async()=>{if(!openWorld)return false;calculations=await SceneCalculations.create({images:{...IMAGES,...images},depths,specs:M.specs,constants:DepthAtlas.constants,patches,world:WORLD,tools:BuildingArea.tools,invalidate(){lastSceneKey='';}});return !!calculations;};
   ui.camera.zoom=W<650?.5:1;$('zoomValue').textContent=Math.round(ui.camera.zoom*100)+' %';ui.camera.y-=120/(ui.camera.zoom*.7);ready=true;
  };
- return {toWorld,toGrid,screenCamera,floors,walls,roofs,get objects(){return modelObjects();},refreshFloors,refreshWalls,refreshRoofs,interior,hiddenWalls,toggleDoor,doorAt,recoveryTargetAt,returnToDoor,navigation,heroPose,get frames(){return openWorld?tiles?.views||[]:[{surface,camera,last:occlusion?.last}];},get tileMetrics(){return tiles?.metrics;},get renderMetrics(){return {...frameMetrics,backgroundBytes:background.width*background.height*4};},get lastHero(){return lastHero;},get rotation(){return rotation;},get ready(){return ready;},get lastMs(){return lastMs;},get occlusion(){return occlusion;},surface,camera};
+ async function settle(){if(!calculations){render();return;}const deadline=performance.now()+60000;do{render();if(!calculations||!calculations.metrics.pending)return;if(performance.now()>deadline)throw Error('Le rendu local n’a pas terminé son calcul');await new Promise(done=>setTimeout(done,10));}while(true);}
+ prepareSceneGraphics=async()=>{ctx.setTransform(1,0,0,1,0,0);const warm=new Set([...Object.keys(COLLECT).map(key=>IMAGES[key]),IMAGES.bush_empty]);for(const image of warm)if(image?.width)ctx.drawImage(image,0,0,8,8);if(warm.size)ctx.getImageData(0,0,1,1);
+  for(const image of new Set([IMAGES.person,IMAGES.right,IMAGES.left,IMAGES.back,IMAGES.walk1,walkLeft])){if(!image?.width)continue;const box=heroBounds(image,{x:0,y:0},ui.camera.zoom);heroCanvas.width=Math.max(1,Math.ceil(box.w*dpr));heroCanvas.height=Math.max(1,Math.ceil(box.h*dpr));heroContext.imageSmoothingQuality='high';heroContext.drawImage(image,0,0,heroCanvas.width,heroCanvas.height);heroContext.getImageData(0,0,1,1);}
+  heroCacheKey='';lastSceneKey='';await settle();};
+ return {toWorld,toGrid,screenCamera,floors,walls,roofs,get objects(){return modelObjects();},refreshFloors,refreshWalls,refreshRoofs,interior,hiddenWalls,toggleDoor,doorAt,recoveryTargetAt,returnToDoor,navigation,heroPose,settle,get frames(){return openWorld?tiles?.views||[]:[{surface,camera,last:occlusion?.last}];},get tileMetrics(){return tiles?.metrics;},get renderMetrics(){return {...frameMetrics,backgroundBytes:background.width*background.height*4,calculations:calculations?.metrics||null};},get lastHero(){return lastHero;},get rotation(){return rotation;},get ready(){return ready;},get lastMs(){return lastMs;},get occlusion(){return occlusion;},surface,camera};
 })();
 window.constructionTrial=ConstructionTrial;
 boot();

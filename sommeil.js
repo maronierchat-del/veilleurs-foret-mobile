@@ -7,15 +7,16 @@ const PaillasseSleep=(()=>{
  function arrival(o){
   const q=api.toGrid(o.x,o.y),m=CultivationPlacement.model(o),[w,h]=ValidatedModel.dimensions(m);
   const candidates=[[-w/2-.22,0],[w/2+.22,0],[0,-h/2-.22],[0,h/2+.22]].map(([u,v])=>api.toWorld(q.u+u,q.v+v)).filter(p=>canWalk(p.x,p.y)).sort((a,b)=>Math.hypot(a.x-state.player.x,a.y-state.player.y)-Math.hypot(b.x-state.player.x,b.y-state.player.y));
-  for(const point of candidates){const route=api.navigation.plan(state.player,point);if(route)return {point,route};}return null;
+  return candidates;
  }
+ function journey(candidates){let index=0,job=null;return {step(budget=3){const until=performance.now()+budget;do{const point=candidates[index];if(!point)return {done:true,route:null,point:null};if(!job)job=api.navigation.begin(state.player,point);const result=job.step(Math.max(.1,until-performance.now()));if(!result.done)return {done:false};if(result.route)return {...result,point};index++;job=null;}while(performance.now()<until);return {done:false};}};}
  function request(o){
   if(session||!supports(o)||!state.objects.includes(o))return false;
-  const goal=arrival(o);if(!goal){toast('Aucun côté accessible pour dormir sur cette paillasse.');return false;}
+  const candidates=arrival(o);if(!candidates.length){toast('Aucun côté accessible pour dormir sur cette paillasse.');return false;}
   const source=state,position={x:o.x,y:o.y,rot:o.rot||0};
   dismissObjectMenu();closePanel();ui.keys.clear();ui.touch.clear();
-  session={id:o.id,source,position,point:goal.point,phase:'approach',elapsed:0};
-  ui.auto={...goal.point,id:null,route:goal.route,index:0};session.command=ui.auto;
+  session={id:o.id,source,position,point:candidates[0],phase:'approach',elapsed:0};
+  const current=session,planning=journey(candidates),command={...candidates[0],id:null,index:0};command.pathJob={step(budget){const result=planning.step(budget);if(session===current&&result.done){if(result.point){current.point=result.point;Object.assign(command,result.point);}else current.noArrival=true;}return result;}};ui.auto=command;session.command=command;
   return true;
  }
  function clear(){session=null;ui.keys.clear();ui.touch.clear();ui.walkMoving=false;if(veil){veil.hidden=true;veil.style.opacity='0';}document.body.classList.remove('sleep-active');}
@@ -29,7 +30,8 @@ const PaillasseSleep=(()=>{
  }
  function morning(){
   if(session.committed)return true;
-  const o=state.objects.find(o=>o.id===session.id),point=canWalk(session.point.x,session.point.y)?session.point:arrival(o)?.point;
+  const o=state.objects.find(o=>o.id===session.id);let point=session.point;
+  if(!canWalk(point.x,point.y)){if(!session.wakeJob)session.wakeJob=journey(arrival(o));const result=session.wakeJob.step(3);if(!result.done){session.elapsed=session.fadeOut+session.black;return false;}point=result.point;}
   if(!point){cancel();toast('Le côté de la paillasse n’est plus accessible.');return false;}
   if(!NightGrowth.sleep(point)){clear();drawSelection();render();return false;}
   session.committed=true;return true;
@@ -41,7 +43,7 @@ const PaillasseSleep=(()=>{
   if(state!==session.source||!supports(o)||o.x!==session.position.x||o.y!==session.position.y||(o.rot||0)!==session.position.rot){cancel();return;}
   if(session.phase==='approach'){
    if(Math.hypot(state.player.x-session.point.x,state.player.y-session.point.y)<4){beginNight();return;}
-   if(ui.auto!==session.command){cancel();return;}return;
+   if(ui.auto!==session.command){const failed=session.noArrival;cancel();if(failed)toast('Aucun côté accessible pour dormir sur cette paillasse.');return;}return;
   }
   session.elapsed+=dt*1000;const t=session.elapsed,{fadeOut,black,fadeIn}=session;
   // Mettre le monde à jour pendant le noir, avant qu'il réapparaisse au matin.
