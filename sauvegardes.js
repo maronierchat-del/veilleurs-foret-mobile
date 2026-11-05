@@ -7,6 +7,9 @@ const SaveContinuity=(()=>{
  const expeditionKey=SAVE_KEY+'.avant-preparation-expedition-v1';
  const paillasseKey=SAVE_KEY+'.avant-paillasse-v1';
  const nightsKey=SAVE_KEY+'.avant-nuits-v1';
+ const fencesKey=SAVE_KEY+'.avant-clotures-v1',tableKey=SAVE_KEY+'.avant-table-v1';
+ const blocksKey=SAVE_KEY+'.avant-blocs-v1';
+ const activitiesKey=SAVE_KEY+'.avant-activites-v1';
  let expectedRaw=null,loaded=false,prepare,activate,lastError='',importing=false;
  const record=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
  const own=(o,k)=>Object.hasOwn(o,k);
@@ -32,9 +35,11 @@ const SaveContinuity=(()=>{
   requireValue(['person','right','left','back'].includes(s.player.face),'Orientation du personnage invalide.');
   requireValue(nonnegative(s.sport)&&nonnegative(s.cul),'Réserves d’énergie invalides.');
   if(typeof ExpeditionPrep!=='undefined')ExpeditionPrep.validate(s);
-  requireValue(own(MODES,s.mode),'Difficulté inconnue.');inventory(s.items);
+  const modeRates=own(s,'activityTracking')?MODES:ActivityData.legacyModes;
+  requireValue(own(modeRates,s.mode),'Difficulté inconnue.');inventory(s.items);
   requireValue(record(s.remainders)&&record(s.cardioDays),'Activités incomplètes.');
-  for(const [k,n]of Object.entries(s.remainders))requireValue(own(MODES,k)&&integer(n)&&n<MODES[k],'Secondes reportées invalides.');
+  for(const [k,n]of Object.entries(s.remainders))requireValue(own(modeRates,k)&&integer(n)&&n<modeRates[k],'Secondes reportées invalides.');
+  ActivityData.validate(s);
   for(const [day,n]of Object.entries(s.cardioDays))requireValue(/^\d{4}-\d{2}-\d{2}$/.test(day)&&integer(n),'Points cardio invalides.');
   if(own(s,'paiDays')){
    requireValue(record(s.paiDays),'Saisies PAI invalides.');
@@ -79,11 +84,12 @@ const SaveContinuity=(()=>{
   requireValue(record(t)&&t.version===1&&[0,1,2,3].includes(t.rotation)&&typeof t.doorOpen==='boolean','Cette sauvegarde ne provient pas du laboratoire compatible.');
   if(own(t,'doorOutward'))requireValue(Array.isArray(t.doorOutward)&&t.doorOutward.length===2&&t.doorOutward.every(Number.isInteger)&&Math.abs(t.doorOutward[0])+Math.abs(t.doorOutward[1])===1,'Sens de porte invalide.');
   for(const key of ['freeFloors','freeWalls','freeRoofs'])if(own(t,key))requireValue(Array.isArray(t[key])&&t[key].length<100000,'Constructions invalides.');
-  for(const p of t.freeWalls||[])if(p?.key==='porte'){
+  for(const p of t.freeWalls||[])if(['porte','portillon'].includes(p?.key)){
    if(own(p,'hinge'))requireValue(['left','right'].includes(p.hinge),'Gonds invalides.');
    if(own(p,'open'))requireValue(typeof p.open==='boolean','État de porte invalide.');
    if(own(p,'outward'))requireValue(Array.isArray(p.outward)&&p.outward.length===2&&(p.rot===0?p.outward[0]===0&&[-1,1].includes(p.outward[1]):p.outward[1]===0&&[-1,1].includes(p.outward[0])),'Sens de battant invalide.');
   }
+  ConstructionBlocks.validate(s);FenceData.validate(s);TableConstruction.validate(s);
   return s;
  }
  function decode(raw){
@@ -100,6 +106,10 @@ const SaveContinuity=(()=>{
   const paiMigrated=!own(candidate,'paiDays')||!own(candidate,'paiStartDate');
   if(!own(candidate,'paiDays'))candidate.paiDays={};
   if(!own(candidate,'paiStartDate'))candidate.paiStartDate=[paiDateDefault(),...Object.keys(candidate.paiDays)].sort()[0];
+  const blocksMigrated=ConstructionBlocks.migrate(candidate);
+  const fencesMigrated=FenceData.migrate(candidate);
+  const tableMigrated=TableConstruction.migrate(candidate);
+  const activitiesMigrated=ActivityData.migrate(candidate);
   const malleMigrated=typeof MalleTrial!=='undefined'&&MalleTrial.needsMigration(candidate);
   if(malleMigrated)MalleTrial.migrate(candidate);
   const expeditionMigrated=typeof ExpeditionPrep!=='undefined'&&ExpeditionPrep.needsMigration(candidate);
@@ -110,7 +120,7 @@ const SaveContinuity=(()=>{
   const nightsMigrated=typeof NightGrowth!=='undefined'&&NightGrowth.needsMigration(candidate);
   if(nightsMigrated)NightGrowth.migrate(candidate);
   validate(candidate);
-  return {state:candidate,legacy:!envelope,nettlesMigrated,worldMigrated,paiMigrated,malleMigrated,expeditionMigrated,cookingMigrated,paillasseMigrated,nightsMigrated};
+  return {state:candidate,legacy:!envelope,nettlesMigrated,worldMigrated,paiMigrated,malleMigrated,expeditionMigrated,cookingMigrated,paillasseMigrated,nightsMigrated,activitiesMigrated,blocksMigrated,fencesMigrated,tableMigrated};
  }
  function encode(s){validate(s);return JSON.stringify({application:APPLICATION,formatVersion:FORMAT,savedAt:Date.now(),state:s});}
  function unchanged(){requireValue(localStorage.getItem(SAVE_KEY)===expectedRaw,'La partie a changé dans un autre onglet. Exporte ta progression puis recharge ce jeu.');}
@@ -129,10 +139,17 @@ const SaveContinuity=(()=>{
   let candidate;
   if(expectedRaw===null){
    requireValue(localStorage.getItem(migrationKey)===null&&localStorage.getItem(importKey)===null&&localStorage.getItem(worldKey)===null&&localStorage.getItem(paiKey)===null&&localStorage.getItem(malleKey)===null&&localStorage.getItem(expeditionKey)===null&&localStorage.getItem(paillasseKey)===null&&localStorage.getItem(nightsKey)===null,'Sauvegarde principale absente. Un secours est disponible ci-dessous.');
-   candidate=newState();validate(candidate);
+   requireValue(localStorage.getItem(tableKey)===null,'Sauvegarde principale absente. Un secours avant table est disponible.');
+   requireValue(localStorage.getItem(fencesKey)===null,'Sauvegarde principale absente. Un secours avant clôtures est disponible.');
+   requireValue(localStorage.getItem(blocksKey)===null,'Sauvegarde principale absente. Un secours avant les blocs est disponible ci-dessous.');
+   requireValue(localStorage.getItem(activitiesKey)===null,'Sauvegarde principale absente. Un secours d’activité est disponible ci-dessous.');candidate=newState();validate(candidate);
   }
   else{
    const decoded=decode(expectedRaw);candidate=decoded.state;
+   if(decoded.tableMigrated){unchanged();if(localStorage.getItem(tableKey)===null)checkpoint(tableKey,expectedRaw);}
+   if(decoded.fencesMigrated){unchanged();if(localStorage.getItem(fencesKey)===null)checkpoint(fencesKey,expectedRaw);}
+   if(decoded.blocksMigrated){unchanged();if(localStorage.getItem(blocksKey)===null)checkpoint(blocksKey,expectedRaw);}
+   if(decoded.activitiesMigrated){unchanged();if(localStorage.getItem(activitiesKey)===null)checkpoint(activitiesKey,expectedRaw);}
    if(decoded.nightsMigrated){unchanged();if(localStorage.getItem(nightsKey)===null)checkpoint(nightsKey,expectedRaw);}
    if(decoded.paillasseMigrated){unchanged();if(localStorage.getItem(paillasseKey)===null)checkpoint(paillasseKey,expectedRaw);}
    if(decoded.cookingMigrated){unchanged();checkpoint(SAVE_KEY+'.avant-retablissement-gains-marmite-v1',expectedRaw);}
@@ -141,6 +158,8 @@ const SaveContinuity=(()=>{
    if(decoded.paiMigrated){unchanged();checkpoint(paiKey,expectedRaw);}
    if(decoded.malleMigrated){unchanged();checkpoint(malleKey,expectedRaw);}
    if(decoded.expeditionMigrated){unchanged();if(localStorage.getItem(expeditionKey)===null)checkpoint(expeditionKey,expectedRaw);}
+   // Le nouveau format ne devient jouable qu'une fois son écriture confirmée.
+   if(decoded.activitiesMigrated||decoded.blocksMigrated||decoded.fencesMigrated||decoded.tableMigrated)write(encode(candidate));
   }
   loaded=true;return candidate;
  }
@@ -154,6 +173,10 @@ const SaveContinuity=(()=>{
   try{
    requireValue(file.size<=LIMIT,'Fichier trop volumineux.');const importedRaw=await file.text(),decoded=decode(importedRaw),candidate=decoded.state;
    if(!confirm('Importer cette sauvegarde ? Elle remplacera ta partie actuelle. Un secours de la partie remplacée sera conservé.'))return false;
+   if(decoded.tableMigrated&&localStorage.getItem(tableKey)===null)checkpoint(tableKey,importedRaw);
+   if(decoded.fencesMigrated&&localStorage.getItem(fencesKey)===null)checkpoint(fencesKey,importedRaw);
+   if(decoded.blocksMigrated&&localStorage.getItem(blocksKey)===null)checkpoint(blocksKey,importedRaw);
+   if(decoded.activitiesMigrated&&localStorage.getItem(activitiesKey)===null)checkpoint(activitiesKey,importedRaw);
    if(decoded.paillasseMigrated&&localStorage.getItem(paillasseKey)===null)checkpoint(paillasseKey,importedRaw);
    if(decoded.nightsMigrated&&localStorage.getItem(nightsKey)===null)checkpoint(nightsKey,importedRaw);
    // Capture aussi les actions encore en attente de l’enregistrement différé.
@@ -186,7 +209,8 @@ const SaveContinuity=(()=>{
   const p=document.createElement('p');p.textContent='Partie conservée, chargement interrompu : '+error.message;host.append(p);
   const button=(label,action)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=action;host.append(b);};
   if(expectedRaw!==null)button('Exporter les données conservées',()=>download(expectedRaw,'veilleurs-donnees-conservees.json'));
-  for(const [key,label]of [[nightsKey,'Exporter le secours avant la pousse nocturne'],[paillasseKey,'Exporter le secours avant la paillasse'],[expeditionKey,'Exporter le secours avant la préparation des expéditions'],[migrationKey,'Exporter le secours avant mise à jour'],[importKey,'Exporter le secours avant import'],[worldKey,'Exporter le secours avant retrait du témoin / paysage'],[paiKey,'Exporter le secours avant les PAI'],[malleKey,'Exporter le secours avant la malle V8']]){
+  try{const raw=localStorage.getItem(activitiesKey);if(raw!==null)button('Exporter le secours avant les activités alpha 3',()=>download(raw,'veilleurs-secours-activites.json'));}catch{}
+  for(const [key,label]of [[tableKey,'Exporter le secours avant la table'],[fencesKey,'Exporter le secours avant clôtures'],[blocksKey,'Exporter le secours avant les blocs'],[nightsKey,'Exporter le secours avant la pousse nocturne'],[paillasseKey,'Exporter le secours avant la paillasse'],[expeditionKey,'Exporter le secours avant la préparation des expéditions'],[migrationKey,'Exporter le secours avant mise à jour'],[importKey,'Exporter le secours avant import'],[worldKey,'Exporter le secours avant retrait du témoin / paysage'],[paiKey,'Exporter le secours avant les PAI'],[malleKey,'Exporter le secours avant la malle V8']]){
    try{const raw=localStorage.getItem(key);if(raw!==null)button(label,()=>download(raw,'veilleurs-secours.json'));}catch{}
   }
   const label=document.createElement('label');label.textContent='Importer un fichier de secours : ';
@@ -196,10 +220,10 @@ const SaveContinuity=(()=>{
   prepare=hooks.prepare;activate=hooks.activate;loadSave=load;saveNow=save;importSave=importFile;
   exportSave=function(){try{download(encode(state),'veilleurs-construction-'+new Date().toISOString().slice(0,10)+'.json');toast('Fichier de sauvegarde exporté.');}catch(e){toast('Export impossible : '+e.message);}};
   const originalPanelClick=handlePanelClick;
-  handlePanelClick=function(e){const b=e.target.closest('[data-action=export-rescue]');if(b){try{if(![migrationKey,importKey,worldKey,paiKey,malleKey,expeditionKey,paillasseKey,nightsKey].includes(b.dataset.backup))return;const raw=localStorage.getItem(b.dataset.backup);if(raw!==null)download(raw,'veilleurs-secours.json');else toast('Aucun secours de ce type : aucune opération correspondante effectuée.');}catch(error){toast(error.message);}return;}return originalPanelClick(e);};
+  handlePanelClick=function(e){const b=e.target.closest('[data-action=export-rescue]');if(b){try{if(![migrationKey,importKey,worldKey,paiKey,malleKey,expeditionKey,paillasseKey,nightsKey,activitiesKey,blocksKey,fencesKey,tableKey].includes(b.dataset.backup))return;const raw=localStorage.getItem(b.dataset.backup);if(raw!==null)download(raw,'veilleurs-secours.json');else toast('Aucun secours de ce type : aucune opération correspondante effectuée.');}catch(error){toast(error.message);}return;}return originalPanelClick(e);};
  }
  function backupButtons(){return `<button class="btn full secondary" data-action="export-rescue" data-backup="${expeditionKey}">Exporter le secours avant la préparation des expéditions</button><button class="btn full secondary" data-action="export-rescue" data-backup="${malleKey}">Exporter le secours avant la malle V8</button><button class="btn full secondary" data-action="export-rescue" data-backup="${paiKey}">Exporter le secours avant les PAI</button><button class="btn full secondary" data-action="export-rescue" data-backup="${migrationKey}">Exporter le secours avant mise à jour</button><button class="btn full secondary" data-action="export-rescue" data-backup="${importKey}">Exporter le secours avant import</button><button class="btn full secondary" data-action="export-rescue" data-backup="${worldKey}">Exporter le secours avant retrait du témoin / paysage</button>`;}
  const previousButtons=backupButtons;
- backupButtons=()=>`<button class="btn full secondary" data-action="export-rescue" data-backup="${nightsKey}">Exporter le secours avant la pousse nocturne</button><button class="btn full secondary" data-action="export-rescue" data-backup="${paillasseKey}">Exporter le secours avant la paillasse</button>`+previousButtons();
+  backupButtons=()=>`<button class="btn full secondary" data-action="export-rescue" data-backup="${tableKey}">Exporter le secours avant la table</button><button class="btn full secondary" data-action="export-rescue" data-backup="${fencesKey}">Exporter le secours avant clôtures</button><button class="btn full secondary" data-action="export-rescue" data-backup="${blocksKey}">Exporter le secours avant les blocs</button><button class="btn full secondary" data-action="export-rescue" data-backup="${activitiesKey}">Exporter le secours avant les activités alpha 3</button><button class="btn full secondary" data-action="export-rescue" data-backup="${nightsKey}">Exporter le secours avant la pousse nocturne</button><button class="btn full secondary" data-action="export-rescue" data-backup="${paillasseKey}">Exporter le secours avant la paillasse</button>`+previousButtons();
  return {install,decode,encode,validate,recovery,backupButtons,migrationKey,importKey,worldKey,get error(){return lastError;}};
 })();

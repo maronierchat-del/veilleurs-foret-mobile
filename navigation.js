@@ -1,6 +1,6 @@
 /* Recherche de chemin locale : mêmes collisions que la marche, aucune téléportation. */
 (function(root){'use strict';
- function create(canWalk,{width,height},step=14){
+ function create(canWalk,{width,height},step=14,{shortcuts=false,detours=false}={}){
   function clear(a,b){const n=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)/4));for(let i=1;i<=n;i++)if(!canWalk(a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n))return false;return true;}
   function* clearSteps(a,b){const n=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)/4));for(let i=1;i<=n;i++){const free=canWalk(a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n);yield;if(!free)return false;}return true;}
   function* planSteps(from,to,radius=0){
@@ -9,6 +9,15 @@
    if(distance(from)<=radius)return [];
    const direct=radius?{x:to.x+(from.x-to.x)/distance(from)*(radius-2),y:to.y+(from.y-to.y)/distance(from)*(radius-2)}:to;
    if(yield* clearSteps(from,direct))return [direct];
+   // Quelques détours courts entièrement vérifiés évitent une exploration de grille
+   // pour les obstacles courants. Le même A* prend le relais si aucun ne passe.
+   if(detours&&!radius){const length=distance(from),nx=-(to.y-from.y)/length,ny=(to.x-from.x)/length;
+    for(const offset of [step*4,step*8,step*16]){if(offset>length/2)break;
+     for(const sign of [-1,1]){const via={x:(from.x+to.x)/2+nx*offset*sign,y:(from.y+to.y)/2+ny*offset*sign};
+      if((yield* clearSteps(from,via))&&(yield* clearSteps(via,to)))return [via,{...to}];
+     }
+    }
+   }
    const heap=[],nodes=new Map(),occupied=new Map();
    const id=(x,y)=>x+','+y,point=(x,y)=>({x:from.x+x*step,y:from.y+y*step});
    function push(n){heap.push(n);let i=heap.length-1;while(i){const p=(i-1)>>1;if(heap[p].f<=n.f)break;heap[i]=heap[p];i=p;}heap[i]=n;}
@@ -16,7 +25,9 @@
    const heuristic=p=>Math.max(0,distance(p)-radius),start={x:0,y:0,g:0,f:heuristic(from),parent:null};nodes.set(id(0,0),start);push(start);
    let visited=0;
    while(heap.length&&visited++<26000){yield;const n=pop();if(n.closed)continue;n.closed=true;const p=point(n.x,n.y),d=distance(p);
-    if((radius&&d<=radius)||(!radius&&d<=step*1.5&&(yield* clearSteps(p,to)))){
+    // Après le contournement, terminer dès qu'une liaison entièrement libre rejoint le but.
+    const shortcut=shortcuts&&!radius&&visited%8===0&&d<distance(from);
+    if((radius&&d<=radius)||(!radius&&(d<=step*1.5||shortcut)&&(yield* clearSteps(p,to)))){
      const path=[];for(let a=n;a.parent;a=a.parent){path.push(point(a.x,a.y));if(path.length%64===0)yield;}path.reverse();if(!radius)path.push({...to});
      // Raccourcir uniquement les segments entièrement libres, sans couper les angles.
      const smooth=[];let anchor=from,i=0;while(i<path.length){let j=i;while(j+1<path.length&&(yield* clearSteps(anchor,path[j+1])))j++;smooth.push(path[j]);anchor=path[j];i=j+1;}return smooth;

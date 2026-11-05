@@ -13,7 +13,7 @@ const ConstructionTiles=(()=>{
   }
   function render({floors,walls,roofs,objects,hiddenWalls,extras,screen}){
    stamp++;rebuilt=0;
-   const floorBounds=floors.map(p=>bounds([[p.u,p.v],[p.u+1,p.v],[p.u+1,p.v+1],[p.u,p.v+1]].map(q=>P(...q)))),wallBounds=walls.map(p=>bounds([...G.ends(p).flatMap(q=>[P(...q),P(...q,126)]),...(p.key==='porte'&&p.open?HouseDoor.geometry(p,G).corners.map(q=>P(q.u,q.v,q.z)):[])])),roofBounds=roofs.map(p=>bounds(RoofModules.mesh(p).flatMap(f=>f.points.map(q=>P(q.u,q.v,q.z))))),objectBounds=objects.map(p=>M.bounds(p,zero,G));
+   const floorBounds=floors.map(p=>bounds([[p.u,p.v],[p.u+1,p.v],[p.u+1,p.v+1],[p.u,p.v+1]].map(q=>P(...q)))),wallBounds=walls.map(p=>bounds([...G.ends(p).flatMap(q=>[P(...q),P(...q,126)]),...(['porte','portillon'].includes(p.key)&&p.open?HouseDoor.geometry(p,G).corners.map(q=>P(q.u,q.v,q.z)):[])])),roofBounds=roofs.map(p=>bounds(RoofModules.mesh(p).flatMap(f=>f.points.map(q=>P(q.u,q.v,q.z))))),objectBounds=objects.map(p=>M.bounds(p,zero,G));
    const roofCharts=ModuleRoofArt.charts(roofs),viewport={x:-screen.x/screen.zoom-1,y:-screen.y/screen.zoom-1,w:W/screen.zoom+2,h:H/screen.zoom+2},keys=new Set();
    for(const b of [...floorBounds,...wallBounds,...roofBounds,...objectBounds,...extras.filter(e=>e.construction).map(e=>e.rect)]){
     if(!intersects(b,viewport))continue;const x0=Math.floor((Math.max(b.x,viewport.x)+OFFSET.x)/SIZE),x1=Math.floor((Math.min(b.x+b.w,viewport.x+viewport.w)+OFFSET.x)/SIZE),y0=Math.floor((Math.max(b.y,viewport.y)+OFFSET.y)/SIZE),y1=Math.floor((Math.min(b.y+b.h,viewport.y+viewport.h)+OFFSET.y)/SIZE);

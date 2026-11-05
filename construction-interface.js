@@ -10,12 +10,15 @@ const ConstructionUI=(()=>{
   pan:['pan',1536,1024,[144,63,1464,996],[.941,.960,1.066]],
   angle:['angle',1351,1164,[24,60,1326,1098],[1,.983,.956]],
   ridge:['faitage',1536,1024,[216,96,1392,915],[.988,.967,.942]],
-  valley:['noue',1536,1024,[81,60,1446,966],[1,1.017,1.066]]
+  valley:['noue',1536,1024,[81,60,1446,966],[1,1.017,1.066]],
+  flat:['faite-plat-v3',1536,1024,[84,140,1427,908],[1,1,1]]
  };
- const names={sol:'Sol en bois',mur:'Mur en bois',fenetre:'Mur avec fenêtre',porte:'Mur avec porte',pan:'Pan de toit',angle:'Angle extérieur',ridge:'Faîtage',valley:'Angle rentrant'};
+ const names={sol:'Sol en bois',mur:'Mur en bois',fenetre:'Mur avec fenêtre',porte:'Mur avec porte',pan:'Pan de toit',angle:'Angle extérieur',ridge:'Faîtage',valley:'Angle rentrant',flat:'Faîte plat',cloture:'Clôture en bois',portillon:'Portillon'};
  let button,actions,api,lastKey='',ready=false;
  const tools=new URLSearchParams(location.search).has('outils');
  function image(key){
+  if(['cloture','portillon'].includes(key))return '<span class="construction-icon" aria-hidden="true"><img alt="" src="assets/sprites/construction/'+key+'.png" loading="lazy" style="width:100%;height:100%;object-fit:contain"></span>';
+  if(['bloc_bois','bloc_toit'].includes(key))return '<img alt="" src="assets/construction-menu/'+(key==='bloc_bois'?'bloc-bois-v2':'bloc-toit-v2')+'.png" loading="lazy">';
   if(tools)return null;
   const icon=icons[key];if(!icon)return null;
   const [name,w,h,[left,top,right,bottom]]=icon,bw=right-left,bh=bottom-top;
@@ -24,8 +27,8 @@ const ConstructionUI=(()=>{
   return '<span class="construction-icon" aria-hidden="true"><svg viewBox="'+[left,top,bw,bh].join(' ')+'" style="width:'+bw*scale*100+'%;height:'+bh*scale*100+'%;filter:url(#construction-color-'+key+')"><image href="assets/construction-menu/'+name+'.png" width="'+w+'" height="'+h+'" /></svg></span>';
  }
  function catalogue(){
-  const cards=[['floor','sol'],['wall','mur'],['wall','fenetre'],['wall','porte'],...['pan','angle','ridge','valley'].map(key=>['roof',key])];
-  return '<div class="construction-stock">'+image('toit')+'<span>Éléments de toiture : <strong>'+amount('toit')+'</strong><small>Stock commun aux quatre formes</small></span></div><div class="construction-catalogue">'+cards.map(([layer,key])=>'<button type="button" class="construction-card" data-build-layer="'+layer+'" data-build-piece="'+key+'">'+image(key)+'<strong>'+names[key]+'</strong>'+(layer==='roof'?'':'<small>× '+amount(key)+'</small>')+'</button>').join('')+'</div>'+(!hasTool('marteau')?'<p>Équipe le marteau pour poser les éléments.</p>':'');
+  const cards=[['floor','sol'],['wall','mur'],['wall','fenetre'],['wall','porte'],['wall','cloture'],['wall','portillon'],...['pan','angle','ridge','valley','flat'].map(key=>['roof',key])];
+  return '<div class="construction-stock"><span>Blocs de bois : <strong>'+amount('bloc_bois')+'</strong> · Blocs de toit : <strong>'+amount('bloc_toit')+'</strong><small>Fabrication à l’établi · pose avec le marteau</small></span></div><div class="construction-catalogue">'+cards.map(([layer,key])=>'<button type="button" class="construction-card" data-build-layer="'+layer+'" data-build-piece="'+key+'">'+image(key)+'<strong>'+names[key]+'</strong><small>'+(ConstructionBlocks.cost(key)+' bloc'+(ConstructionBlocks.cost(key)>1?'s':'')+(layer==='roof'?' de toit':' de bois'))+'</small></button>').join('')+'</div>'+(!hasTool('marteau')?'<p>Équipe le marteau pour poser les éléments.</p>':'');
  }
  function start(layer,key){
   if(layer==='floor')FloorPlacement.start();
@@ -75,15 +78,15 @@ const ConstructionUI=(()=>{
   if(!ready)return;
   const s=selection(),active=!!(FloorPlacement.mode||WallPlacement.mode||RoofPlacement.mode);
   document.body.classList.toggle('construction-active',active);
-  const key=JSON.stringify([s,active,FloorPlacement.mode,WallPlacement.mode,RoofPlacement.mode,amount('sol'),amount('mur'),amount('fenetre'),amount('porte'),amount('toit'),hasTool('marteau'),ui.camera,W,H,MapControls.active,ui.open]);
+  const key=JSON.stringify([s,active,FloorPlacement.mode,WallPlacement.mode,RoofPlacement.mode,amount('bloc_bois'),amount('bloc_toit'),amount('cloture'),amount('portillon'),hasTool('marteau'),ui.camera,W,H,MapControls.active,ui.open]);
   if(key===lastKey)return;lastKey=key;
-  if(FloorPlacement.mode)$('floorControls').querySelector('strong').textContent='Sol en bois · × '+amount('sol');
-  if(s?.layer==='wall')$('wallControls').querySelector('strong').textContent=names[s.kind]+' · × '+amount(s.kind);
-  if(s?.layer==='roof')$('roofControls').querySelector('strong').textContent=names[s.kind];
-  $('roofCraft').hidden=amount('toit')>0;
+  if(FloorPlacement.mode)$('floorControls').querySelector('strong').textContent='Sol en bois · 1 bloc de bois · stock '+amount('bloc_bois');
+  if(s?.layer==='wall')$('wallControls').querySelector('strong').textContent=names[s.kind]+' · '+(ConstructionBlocks.cost(s.kind)+' bloc(s) de bois · stock '+amount('bloc_bois'));
+  if(s?.layer==='roof')$('roofControls').querySelector('strong').textContent=names[s.kind]+' · 2 blocs de toit · stock '+amount('bloc_toit');
+  $('roofCraft').hidden=amount('bloc_toit')>=2;
   actions.hidden=!active||ui.open;
   button.hidden=s?.layer!=='roof';
-  $('wallFlip').hidden=s?.layer!=='wall'||s.kind!=='porte';
+  $('wallFlip').hidden=s?.layer!=='wall'||!['porte','portillon'].includes(s.kind);
   if(!button.hidden){
    button.setAttribute('aria-label','Tourner '+names[s.kind]+' · '+s.rot*90+'°');
   }

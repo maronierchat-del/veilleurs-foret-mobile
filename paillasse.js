@@ -7,6 +7,24 @@ const PaillasseConstruction=(()=>{
  M.specs[key]={name:'Paillasse',states:[''],size:[1.3094894334807874,.6688000559806824],centered:true};
  const needsMigration=s=>s.objects.some(o=>o.placed&&o.type===key&&o.paillasseVersion!==1);
  function migrate(s){for(const o of s.objects)if(o.placed&&o.type===key){if(!Number.isInteger(o.rot))o.rot=0;o.paillasseVersion=1;}return s;}
+ function snap(x,y,rotation=0){
+  const q=api.toGrid(x,y),center={u:Math.floor(q.u)+.5,v:Math.floor(q.v)+.5},rot=((rotation%4)+4)%4;
+  // Les deux petits côtés peuvent s'adosser à un mur, quelle que soit la rotation.
+  const axis=rot%2?'v':'u',along=axis==='u'?'v':'u',half=M.specs[key].size[0]/2,halfWidth=M.specs[key].size[1]/2;
+  // Contact avec la face intérieure du mur (demi-épaisseur .035), sans traversée.
+  let best=null;
+  for(const wall of api.walls){
+   if(!['mur','fenetre'].includes(wall.key)||(axis==='u'?wall.rot!==3:wall.rot!==0))continue;
+   const ends=LabGeometry.ends(wall),line=ends[0][axis==='u'?0:1],lo=Math.min(...ends.map(p=>p[along==='u'?0:1])),hi=Math.max(...ends.map(p=>p[along==='u'?0:1]));
+   if(center[along]-halfWidth<lo-1e-8||center[along]+halfWidth>hi+1e-8)continue;
+   for(const sign of [-1,1]){
+    const delta=line-(center[axis]+sign*half);if(Math.abs(delta)>.3)continue;
+    const candidate={...center,[axis]:line-sign*(half+.035)},distance=Math.abs(candidate[axis]-center[axis]);
+    if(!best||distance<best.distance)best={center:candidate,distance};
+   }
+  }
+  const p=best?.center||center;return api.toWorld(p.u,p.v);
+ }
  function grantTestResources(){
   const params=new URLSearchParams(location.search),cultures=params.get('ressources-cultures')==='1',marker=cultures?'nightTestResourcesGranted':'paillasseTestResourcesGranted';
   if(!MalleTrial.testScene||(!cultures&&params.get('ressources-paillasse')!=='1')||state[marker]===true)return false;
@@ -68,5 +86,5 @@ const PaillasseConstruction=(()=>{
    $('panelBody').innerHTML='<p>Paillasse rudimentaire. Le sommeil sera raccordé au prochain jalon, après validation de la pose.</p>';
   };
  }
- return {init,fabricate,place,loadDepths,needsMigration,migrate,grantTestResources};
+ return {init,fabricate,place,snap,loadDepths,needsMigration,migrate,grantTestResources};
 })();

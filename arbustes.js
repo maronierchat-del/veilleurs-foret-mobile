@@ -12,7 +12,10 @@ const BushTransplant=(()=>{
  function load(){for(const [stage,spr]of [[1,'bush_planted'],[2,'bush_empty'],[3,'bush'],['feu','feu'],['marmite','marmite']])measures.set(stage,measure(IMAGES[spr],stage));}
  function bounds(o,foot,zoom=1){if(!isFixture(o))return null;const stage=isBush(o)?o.stage??1:o.type,m=measures.get(stage);if(!m)return null;const visible=stations[o.type]?.height||(stage===1?65:100),scale=visible*zoom/m.visible;return {x:foot.x-m.ground.x*scale,y:foot.y-m.ground.y*scale,w:m.width*scale,h:m.height*scale,foot,scale,visibleHeight:visible};}
  function footprint(o){const q=api.toGrid(o.x,o.y),half=isBush(o)?.5:.25;return [[q.u-half,q.v-half],[q.u+half,q.v-half],[q.u+half,q.v+half],[q.u-half,q.v+half]];}
- function blocked(q){return state.objects.filter(isFixture).some(o=>{const poly=footprint(o);return M.contains([q.u,q.v],poly)||poly.some((a,i)=>G.segmentDistance({x:q.u,y:q.v},{x:a[0],y:a[1]},{x:poly[(i+1)%4][0],y:poly[(i+1)%4][1]})<.1);});}
+ const blockedPoly=(q,poly)=>M.contains([q.u,q.v],poly)||poly.some((a,i)=>G.segmentDistance({x:q.u,y:q.v},{x:a[0],y:a[1]},{x:poly[(i+1)%4][0],y:poly[(i+1)%4][1]})<.1);
+ const blockedBy=(q,polys)=>polys.some(poly=>blockedPoly(q,poly));
+ function blocked(q){return blockedBy(q,state.objects.filter(isFixture).map(footprint));}
+ function blockedChecker(){const shapes=state.objects.filter(isFixture).map(footprint).map(poly=>({poly,left:Math.min(...poly.map(p=>p[0]))-.1,right:Math.max(...poly.map(p=>p[0]))+.1,top:Math.min(...poly.map(p=>p[1]))-.1,bottom:Math.max(...poly.map(p=>p[1]))+.1}));return q=>shapes.some(s=>q.u>=s.left&&q.u<=s.right&&q.v>=s.top&&q.v<=s.bottom&&blockedPoly(q,s.poly));}
  function snap(x,y){const q=api.toGrid(x,y);return api.toWorld(Math.round(q.u*4)/4,Math.round(q.v*4)/4);}
  function evaluate(x,y,key='arbuste'){const p=snap(x,y),o={type:key,placed:true,stage:key==='arbuste'?1:0,...p},poly=footprint(o),player=api.toGrid(state.player.x,state.player.y);
   if(!supports(key))return {valid:false,p,reason:'Objet non raccordé.'};
@@ -37,5 +40,5 @@ const BushTransplant=(()=>{
   placementPoint=function(key,x,y){return supports(key)?snap(x,y):oldPoint(key,x,y);};
   tryPlace=function(x,y){return supports(ui.placing)?apply(x,y):oldPlace(x,y);};
  }
- return {init,load,start,apply,evaluate,bounds,footprint,blocked,drawPreview,isBush,isFixture};
+ return {init,load,start,apply,evaluate,bounds,footprint,blocked,blockedChecker,drawPreview,isBush,isFixture};
 })();

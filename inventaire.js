@@ -1,13 +1,13 @@
 /* Présentation du sac. Filtre et sélection restent en mémoire, hors sauvegarde. */
 'use strict';
 const InventoryUI=(()=>{
- const materials=['bois','pierre','fibres'];
+ const materials=['bois','pierre','fibres','bloc_bois','bloc_toit'];
  const categories=['Tout','Ressources','Nourriture','Outils','À poser'];
  const order=[...materials,'baies',...Object.keys(FOOD),'carotte','champignon','marteau','pelle','hache','pioche',...Object.keys(CRAFT),'jeunes_plants','arbuste'];
  let filter='Tout',selected=null;
  const energy='<svg class="energy-symbol" aria-hidden="true"><use href="#energy-bolt" /></svg>';
  const category=k=>materials.includes(k)?'Ressources':FOOD[k]||['baies','carotte','champignon'].includes(k)?'Nourriture':CRAFT[k]?.kind==='outil'?'Outils':'À poser';
- const image=k=>rowImage(k==='carotte'?'carotte_item':k);
+ const image=k=>rowImage(CRAFT[k]?.stock?CRAFT[k].spr:k==='carotte'?'carotte_item':k);
  const name=k=>k==='toit'?'Toiture en chaume':LABEL[k];
  function render(){
   const focused=document.activeElement?.closest('.inventory-action')?.dataset.action;
@@ -28,7 +28,7 @@ const InventoryUI=(()=>{
   const gain=k==='baies'?1:FOOD[k]?.cul||0,tool=CRAFT[k]?.kind==='outil';
   const action=gain?'eat':tool?(k==='sac'?'':'quick'):k==='jeunes_plants'||materials.includes(k)||['carotte','champignon'].includes(k)?'':'place';
   const label=action==='eat'?'Manger':action==='quick'?(hasTool(k)?'Déséquiper':'Équiper'):'Placer';
-  const note=materials.includes(k)?'Matériau de fabrication':gain?`+${gain} ${energy} culinaire`:tool?(k==='sac'?'Capacité d’inventaire à définir.':hasTool(k)?'Équipé':'Non équipé'):k==='jeunes_plants'?'À utiliser depuis le potager':!action?'Ingrédient de cuisine':k==='arbuste'?'À replanter sur le terrain':'Marteau équipé requis';
+  const note=CRAFT[k]?.stock?'À utiliser depuis Construire':materials.includes(k)?'Matériau de fabrication':gain?`+${gain} ${energy} culinaire`:tool?(k==='sac'?'Capacité d’inventaire à définir.':hasTool(k)?'Équipé':'Non équipé'):k==='jeunes_plants'?'À utiliser depuis le potager':!action?'Ingrédient de cuisine':k==='arbuste'?'À replanter sur le terrain':'Marteau équipé requis';
   return `<div class="inventory-large">${image(k)}</div><div class="inventory-description"><strong>${name(k)}</strong><p>${note}</p></div>${action?`<button type="button" class="inventory-action" data-action="${action}" data-key="${k}">${label}</button>`:''}`;
  }
  function init(){

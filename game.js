@@ -59,10 +59,10 @@ const FOOD={
 const LABEL={bois:'Bois',pierre:'Pierre',fibres:'Fibres végétales',carotte:'Carottes',baies:'Baies',champignon:'Champignons',jeunes_plants:'Jeunes plants de carottes',arbuste:'Arbuste transplanté'};
 for(const [k,v] of Object.entries(CRAFT))LABEL[k]=v.name;
 for(const [k,v] of Object.entries(FOOD))LABEL[k]=v.name;
-const MODES={pls:5,tres_doux:10,doux:15,normal:30,sportif:60};
-const MODENAMES={pls:'PLS — exceptionnel (1 pt / 5 s)',tres_doux:'Très doux (1 pt / 10 s)',doux:'Doux (1 pt / 15 s)',normal:'Normal (1 pt / 30 s)',sportif:'Sportif (1 pt / 60 s)'};
+const MODES={normal:30,malade:15,pls:5};
+const MODENAMES={normal:'Normal (1 pt / 30 s)',malade:'Malade (1 pt / 15 s)',pls:'PLS (1 pt / 5 s)'};
 const COLLECT={twig:{name:'Brindilles',item:'bois',qty:3,cost:1},grass:{name:'Touffe d’herbe',item:'fibres',qty:4,cost:1},pebbles:{name:'Cailloux',item:'pierre',qty:3,cost:1},tree:{name:'Arbre',item:'bois',qty:8,cost:2,tool:'hache'},rock:{name:'Rocher',item:'pierre',qty:8,cost:2,tool:'pioche'},carrot:{name:'Carotte sauvage',item:'carotte',qty:1,cost:1},mushroom:{name:'Champignon sauvage',item:'champignon',qty:1,cost:1},bush:{name:'Arbuste à baies',item:'baies',qty:2,cost:1}};
-const SAVE_KEY=new URLSearchParams(location.search).has('maison-test')?'veilleurs_alpha2_maison_test_v1':'veilleurs_construction_test_etape1_v1';
+const SAVE_KEY=new URLSearchParams(location.search).has('maison-test')?'veilleurs_alpha3_maison_test_v1':'veilleurs_construction_test_etape1_v1';
 const WORLD={width:3600,height:3200,centerX:1800,centerY:1600};
 // DURÉES PROVISOIRES de la maquette : aucune n'est déclarée validée.
 const TEST_HOURS={pepiniere:6,potager:12,champignonniere:12,arbusteFirst:24,arbuste:12,wildBush:12};
@@ -147,7 +147,7 @@ function spaceWildResources(save){
  save.natureLayoutVersion=2;
  return moved;
 }
-function newState(){let s={version:1,natureLayoutVersion:2,player:{x:WORLD.centerX,y:WORLD.centerY,face:'person'},sport:0,cul:0,mode:'normal',equippedTool:null,quickTools:[],audio:{music:false,sfx:false},remainders:{pls:0,tres_doux:0,doux:0,normal:0,sportif:0},cardioDays:{},paiDays:{},paiStartDate:paiDateDefault(),items:{},objects:[],nextId:1,history:[],respawnQueue:[],cropTimeVersion:2,constructionGridVersion:2};
+function newState(){let s={version:1,natureLayoutVersion:2,player:{x:WORLD.centerX,y:WORLD.centerY,face:'person'},sport:0,cul:0,mode:'normal',equippedTool:null,quickTools:[],audio:{music:false,sfx:false},remainders:{normal:0,malade:0,pls:0},cardioDays:{},paiDays:{},paiStartDate:paiDateDefault(),items:{},objects:[],nextId:1,history:[],respawnQueue:[],cropTimeVersion:2,constructionGridVersion:2};
  const rnd=random(210026);
  const add=(type,x,y,extra={})=>s.objects.push({id:s.nextId++,type,x,y,placed:false,...extra});
  // Clairière naturelle : aucun feu de camp, établi, potager ou autre objet fabriqué.
@@ -234,7 +234,7 @@ function craft(key){let r=CRAFT[key];if(!r)return;if(r.bench&&!activeWorkbench()
  if(!enough(r.materials)){toast('Matériaux insuffisants.');return;}if(!pay(4))return;
  spendMaterials(r.materials);give(key,r.qty||1);sound('craft');log(`Fabrication : ${r.name}`);
  if(r.kind==='outil'){toast(`Fabriqué : ${r.name} · va dans le sac pour l’équiper.`);sound('craft');commit();}
- else {commit();placeStart(key);}
+ else {commit();if(r.stock)toast(r.qty+' '+r.name.toLowerCase()+' ajoutés au stock.');else placeStart(key);}
 }
 function cook(key){const r=FOOD[key];if(!r)return;if(!nearest(r.station)){toast(`Approche-toi de ${r.station==='feu'?'ton feu de camp':'ta marmite'}.`);return;}
  if(!enough(r.materials)){toast('Ingrédients insuffisants.');return;}
@@ -323,7 +323,7 @@ function paiCalendarMarkup(){
 }
 function updatePAICalendar(){const calendar=$('paiCalendar');if(!calendar)return;calendar.hidden=!paiCalendarOpen;calendar.innerHTML=paiCalendarMarkup();$('paiCalendarToggle').setAttribute('aria-expanded',String(paiCalendarOpen));}
 function sportModeDetails(mode){return MODENAMES[mode]+'. '+(mode==='pls'?'Mode exceptionnel pour les périodes de capacités très diminuées. Les déplacements ordinaires comptent. ':'')+'Les secondes reportées restent propres à chaque difficulté. Les PAI restent indépendants : 1 PAI = 3 énergie sportive.';}
-const SPORT_LEVELS=['tres_doux','doux','normal','sportif'];
+const SPORT_LEVELS=['normal','malade','pls'];
 let sportRegularMode='normal';
 function plsControlMarkup(){return `<label class="sport-pls-option"><input type="checkbox" id="sportPLS" ${state.mode==='pls'?'checked':''} aria-controls="sportPLSWarning"> Mode PLS exceptionnel</label>
  <div id="sportPLSWarning" class="sport-pls-warning" hidden role="alert"><strong>Activer le mode PLS ?</strong><p>Ce mode exceptionnel est prévu pour les périodes de capacités très diminuées, notamment maladie, convalescence ou grossesse difficile. Les déplacements ordinaires comptent : 1 point d’énergie pour 5 secondes. Les PAI restent indépendants de la difficulté.</p><div><button type="button" data-action="sport-pls-confirm">Activer le mode PLS</button><button type="button" data-action="sport-pls-cancel">Annuler</button></div></div>`;}
@@ -358,24 +358,7 @@ function changeSportDifficulty(control){
  if(isSlider)refreshSportMode();else renderPanel();
 }
 function renderPanel(){if(!ui.open)return;let title='',html='';
- if(ui.tab==='sport'){
-   title='Énergie sportive';const mode=state.mode;
-   if(mode!=='pls')sportRegularMode=mode;
-   html=`<div class="sport-difficulty">
-   <div class="sport-mode-heading"><label for="sportMode">Difficulté</label><strong id="sportModeName">${MODENAMES[mode].split(' (')[0]}</strong><button type="button" id="sportModeInfoToggle" data-action="sport-mode-info" aria-label="Détails du mode ${MODENAMES[mode].split(' (')[0]}" aria-expanded="false" aria-controls="sportModeInfo">i</button></div>
-   <input type="range" id="sportMode" min="0" max="3" step="1" value="${SPORT_LEVELS.indexOf(sportRegularMode)}" aria-valuetext="${MODENAMES[sportRegularMode]}" ${mode==='pls'?'disabled':''}>
-   <div class="sport-mode-ticks" aria-hidden="true"><span>Très doux</span><span>Doux</span><span>Normal</span><span>Sportif</span></div>
-   <p id="sportModeInfo" hidden>${sportModeDetails(mode)}</p>${plsControlMarkup()}</div>
-   <div class="form-row"><div><label for="mins">Minutes</label><input type="number" id="mins" min="0" step="1" value="4" inputmode="numeric"></div><div><label for="secs">Secondes</label><input type="number" id="secs" min="0" max="59" step="1" value="0" inputmode="numeric"></div></div>
-   <button class="btn full" data-action="exercise">Créditer l’activité · ${MODENAMES[mode].split(' (')[0]}</button>
-   <p class="soft">Secondes reportées dans ce mode : <b id="sportRemainder">${state.remainders[mode]||0} s</b>.</p>
-   <h3>PAI · saisie manuelle</h3>
-   <label for="paiCalendarToggle">Jour</label><input type="hidden" id="paiDate" value="${paiSelectedDate||paiDateDefault()}"><div class="pai-date-row"><button type="button" id="paiCalendarToggle" data-action="pai-calendar" aria-expanded="${paiCalendarOpen}" aria-controls="paiCalendar"><span id="paiDateLabel">${paiDateLabel(paiSelectedDate||paiDateDefault())}</span><span>Calendrier</span></button></div>
-   <div id="paiCalendar" class="pai-calendar" ${paiCalendarOpen?'':'hidden'}>${paiCalendarMarkup()}</div>
-   <label for="paiAmount">PAI gagnés ce jour-là</label><input type="number" id="paiAmount" min="0" max="1000000" step="1" value="${state.paiDays?.[paiSelectedDate||paiDateDefault()]||0}" inputmode="numeric">
-   <button class="btn secondary full" data-action="pai">Enregistrer les PAI</button>
-   <p class="soft">1 PAI = 3 points d’énergie sportive, quelle que soit la difficulté.</p>`;
- }
+ if(ui.tab==='sport'){ActivityUI.render();return;}
  if(ui.tab==='inventory'){
    title='Ton sac';
    html='';
@@ -441,9 +424,7 @@ function renderPanel(){if(!ui.open)return;let title='',html='';
  if(ui.tab==='settings'){
    title='Paramètres & sauvegardes';const mode=state.mode;
    if(mode!=='pls')sportRegularMode=mode;
-   html=`<h3>Difficulté sportive</h3><p>Tu peux changer de mode à tout moment, sans perdre ton énergie ni ta progression.</p>
-   <label for="mode">Mode de conversion</label><select id="mode">${mode==='pls'?`<option value="pls" selected disabled>${MODENAMES.pls}</option>`:''}${SPORT_LEVELS.map(k=>`<option value="${k}" ${mode===k?'selected':''}>${MODENAMES[k]}</option>`).join('')}</select>${plsControlMarkup()}
-   <div class="notice">${mode==='pls'?'Mode PLS exceptionnel : pour les périodes de capacités très diminuées, y compris maladie, convalescence ou grossesse difficile. Les déplacements ordinaires comptent.':'Les secondes non converties restent séparées par difficulté pour éviter les doubles comptes.'}</div>
+   html=`<h3>Activités sportives et PAI</h3><button class="btn full secondary" data-activity-open>Ouvrir les activités</button>
    <h3>Agriculture et nature</h3><p class="soft">Dormir sur une paillasse fait avancer chaque culture d’une étape. Une nuit prépare les jeunes plants, les carottes et les champignons ; un jeune arbuste demande une nuit pour devenir adulte, puis une autre pour ses baies. Les buissons cueillis retrouvent leurs baies chaque nuit. La moitié des autres ressources récoltées revient par type, arrondie au supérieur, hors des constructions. Attendre ou fermer le jeu ne fait plus pousser les cultures. Les récoltes prêtes restent disponibles, les cultures ne meurent jamais et l’absence de sport ne coûte rien.</p>
    <h3>Ambiance sonore</h3><p>Musique d’ambiance fournie avec le projet, diffusée en boucle. Activation et désactivation ici ; le navigateur peut attendre ton premier clic pour démarrer le son. Les effets sonores restent indépendants.</p><label class="sound-option"><input id="musicToggle" type="checkbox" ${state.audio?.music?'checked':''}> Musique d’ambiance</label><label class="sound-option"><input id="sfxToggle" type="checkbox" ${state.audio?.sfx?'checked':''}> Effets sonores</label>
    <h3>Sauvegardes</h3><p>Ta progression est enregistrée automatiquement. Les mises à jour compatibles conservent ta partie. Exporte aussi un fichier de secours.</p>
@@ -531,7 +512,7 @@ function advanceVisual(obj){const cycles={potager:3,champignonniere:3,arbuste:4}
  toast('Stade visuel de démonstration — aucune récolte ni coût appliqué.');commit();drawSelection();}
 function pickup(obj){if(!state.objects.includes(obj)||!obj.placed)return;const tool=obj.type==='arbuste'?'pelle':'marteau';if(!hasTool(tool)){toast(`Équipe ${tool==='pelle'?'la pelle':'le marteau'} depuis le sac pour récupérer cet objet.`);return;}const berries=obj.type==='arbuste'&&bushHasBerries(obj);if(obj.type==='arbuste'&&!pay(uprootCost(obj)))return;if(berries)give('baies',2);sound('place');
  // Retourne un objet intact : jamais son prix en matériaux EN PLUS.
- give(obj.type,1);state.objects=state.objects.filter(o=>o.id!==obj.id);ui.selection=null;
+ if(ConstructionBlocks.legacy.includes(obj.type))ConstructionBlocks.change(obj.type,1);else give(obj.type,1);state.objects=state.objects.filter(o=>o.id!==obj.id);ui.selection=null;
  toast(berries?'Arbuste et 2 baies ajoutés au sac.':'Élément récupéré intact, sans remboursement d’énergie.');commit();drawSelection();}
 function performInstall(action){
  const o=state.objects.find(v=>v.id===ui.stationId&&v.placed);if(!o)return;
@@ -668,9 +649,7 @@ function tryPlace(worldX,worldY){let key=ui.placing;if(!key)return;
 }
 function registerActivity(){const mins=Number($('mins')?.value||0),secs=Number($('secs')?.value||0);
  if(!Number.isSafeInteger(mins)||mins<0||mins>100000||!Number.isSafeInteger(secs)||secs<0||secs>59||mins*60+secs===0){toast('Saisis une durée positive en minutes et secondes.');return;}
- const mode=state.mode,tot=(state.remainders[mode]||0)+mins*60+secs,gain=Math.floor(tot/MODES[mode]);
- state.remainders[mode]=tot%MODES[mode];state.sport+=gain;log(`Sport : ${mins} min ${secs} s, +${gain} points (${mode})`);
- toast(`+${gain} énergie sportive · ${state.remainders[mode]} s conservées.`);commit();}
+ ActivityData.record(mins*60+secs);ActivityUI.render();}
 function registerPAI(){const date=$('paiDate')?.value,raw=$('paiAmount')?.value,total=Number(raw),day=new Date(date+'T00:00:00Z');
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')||!Number.isFinite(day.getTime())||day.toISOString().slice(0,10)!==date||!raw?.trim()||!Number.isSafeInteger(total)||total<0||total>1000000){toast('Indique une date et un nombre de PAI valides.');return;}
  if(date<(state.paiStartDate||paiDateDefault())){toast('Cette date précède les premiers PAI autorisés pour cette partie.');return;}
@@ -751,11 +730,22 @@ function objectAt(px,py){
  ui.lastHit={x:px,y:py,index};ui.lastHitAt=now;
  return matches[index];
 }
-function canWalk(x,y){if(x<55||x>WORLD.width-55||y<55||y>WORLD.height-55)return false;
- for(let o of state.objects){if(o.trialFixture||MalleTrial.isFixture(o)||o.placed&&['etabli','arbuste','feu','marmite','pepiniere','potager','champignonniere','portail'].includes(o.type)||!['tree','orties','rock','bush','arbuste','feu','etabli','coffre','marmite','pepiniere','champignonniere','potager'].includes(o.type))continue;
- let radius=['tree','orties'].includes(o.type)?35:o.type==='rock'?30:o.type==='bush'?24:23;
- if(Math.hypot(o.x-x,o.y-y)<radius+12)return false;
- }return true;}
+function walkObstacleRadius(o){
+ if(o.trialFixture||MalleTrial.isFixture(o)||o.placed&&['etabli','arbuste','feu','marmite','pepiniere','potager','champignonniere','portail'].includes(o.type)||!['tree','orties','rock','bush','arbuste','feu','etabli','coffre','marmite','pepiniere','champignonniere','potager'].includes(o.type))return null;
+ return ['tree','orties'].includes(o.type)?47:o.type==='rock'?42:o.type==='bush'?36:35;
+}
+function worldWalkBounds(x,y){return x>=55&&x<=WORLD.width-55&&y>=55&&y<=WORLD.height-55;}
+function canWalk(x,y){if(!worldWalkBounds(x,y))return false;
+ for(const o of state.objects){const radius=walkObstacleRadius(o);if(radius!==null&&Math.hypot(o.x-x,o.y-y)<radius)return false;}return true;
+}
+// Index temporaire d'une tranche de recherche : aucun obstacle éloigné parcouru par point.
+function createWorldWalkChecker(){
+ const size=128,cells=new Map(),key=(x,y)=>x+','+y;
+ for(const o of state.objects){const radius=walkObstacleRadius(o);if(radius===null)continue;const circle={x:o.x,y:o.y,radius};
+  for(let x=Math.floor((o.x-radius)/size);x<=Math.floor((o.x+radius)/size);x++)for(let y=Math.floor((o.y-radius)/size);y<=Math.floor((o.y+radius)/size);y++){const k=key(x,y);if(!cells.has(k))cells.set(k,[]);cells.get(k).push(circle);}
+ }
+ return (x,y)=>worldWalkBounds(x,y)&&!(cells.get(key(Math.floor(x/size),Math.floor(y/size)))||[]).some(o=>Math.hypot(o.x-x,o.y-y)<o.radius);
+}
 function movePlayer(vx,vy,dt){let mag=Math.hypot(vx,vy);if(!mag)return false;vx/=mag;vy/=mag;
  let p=state.player,speed=195,dx=vx*speed*dt,dy=vy*speed*dt;let did=false;
  if(canWalk(p.x+dx,p.y)){p.x+=dx;did=true;}if(canWalk(p.x,p.y+dy)){p.y+=dy;did=true;}

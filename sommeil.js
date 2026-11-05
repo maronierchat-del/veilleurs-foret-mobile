@@ -70,9 +70,7 @@ const PaillasseSleep=(()=>{
    $('panelBody').innerHTML='<button type="button" class="btn full" data-sleep="'+o.id+'">Dormir jusqu’au lendemain</button><p class="soft">Une nuit fait avancer chaque culture d’une étape.</p>';
   };
   const oldSelection=drawSelection;drawSelection=function(){oldSelection();const o=state.objects.find(o=>o.id===ui.selection);if(!supports(o)||ToolRecovery.active)return;
-   const el=$('selection');el.hidden=false;el.replaceChildren();const title=document.createElement('strong');title.className='resource-summary';title.textContent='Paillasse';el.append(title);
-   const b=document.createElement('button');b.type='button';b.dataset.sleep=String(o.id);b.textContent='Dormir jusqu’au lendemain';el.append(b);
-   const p=document.createElement('p');p.textContent='Une nuit = une étape de pousse';el.append(p);
+   const el=$('selection');el.hidden=false;el.replaceChildren();const title=document.createElement('strong');title.className='resource-summary';title.textContent='Lit — pour passer la nuit';el.append(title);
   };
   const click=e=>{const b=e.target.closest('[data-sleep]');if(!b)return;const o=state.objects.find(o=>o.id===Number(b.dataset.sleep));if(o&&ui.objectMenu===o.id)request(o);};$('selection').addEventListener('click',click);$('panelBody').addEventListener('click',click);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});window.addEventListener('pagehide',cancel);

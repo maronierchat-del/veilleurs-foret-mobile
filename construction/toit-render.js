@@ -1,5 +1,6 @@
+/* Faîte plat V5 adopté le 3 novembre 2026 ; raccordé en alpha 3 locale. */
 /* Une matière commune, dépliée autour des arêtiers ; hauteurs des cours dans le monde. */
-(function(root,factory){'use strict';if(typeof module==='object'&&module.exports)module.exports=factory(require('./model.js'));else root.ModuleRoofArt=factory(root.RoofModules);})(globalThis,function(M){'use strict';
+(function(root,factory){'use strict';if(typeof module==='object'&&module.exports)module.exports=factory(require('./toit-model.js'));else root.ModuleRoofArt=factory(root.RoofModules);})(globalThis,function(M){'use strict';
  const EPS=1e-7,COURSE=M.RISE/3;
  const pointKey=q=>[q.u,q.v,q.z].map(x=>Math.round(x*1e7)).join(','),edgeKey=(a,b)=>[pointKey(a),pointKey(b)].sort().join('|');
  const lateral=(face,q)=>face.axis===0?q.v:q.u;
@@ -12,7 +13,7 @@
    if(other){f.links.push({face:other.face,a,b});other.face.links.push({face:f,a,b});}else edges.set(key,{face:f,a,b});
   }
   for(const seed of faces){if(seed.sign!==null)continue;seed.sign=1;seed.offset=0;const queue=[seed];
-   while(queue.length){const f=queue.shift();for(const {face:g,a,b} of f.links){if(g.sign!==null)continue;
+   while(queue.length){const f=queue.shift();for(const {face:g,a,b} of f.links){if(g.sign!==null||(!f.plane.zu&&!f.plane.zv)||(!g.plane.zu&&!g.plane.zv))continue;
     const xa=uv(f,a).x,xb=uv(f,b).x,la=lateral(g,a),lb=lateral(g,b),delta=lb-la;
     g.sign=Math.abs(delta)>EPS?Math.round((xb-xa)/delta):f.sign;g.offset=xa-g.sign*la;queue.push(g);
    }}
@@ -36,7 +37,20 @@
   for(const face of faces){const f=face.plane,o=P(0,0,f.c),a=P(1,0,f.c+f.zu),b=P(0,1,f.c+f.zv);
    if((a.x-o.x)*(b.y-o.y)-(a.y-o.y)*(b.x-o.x)<=0)continue;
    ctx.save();poly(face.points.map(q=>P(q.u,q.v,q.z)),'#927440');ctx.clip();
-   if(ready){
+   if(ready&&!f.zu&&!f.zv){
+    // Quatre triangles virtuels coplanaires : les cours suivent chaque base extérieure.
+    const points=face.points.map(q=>P(q.u,q.v,q.z)),w=image.naturalWidth,h=image.naturalHeight;
+    const center={x:points.reduce((s,q)=>s+q.x,0)/4,y:points.reduce((s,q)=>s+q.y,0)/4};
+    for(let i=0;i<4;i++){
+     const a=points[i],b=points[(i+1)%4],mid={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+     // Image : sommet au milieu du bord haut ; base sur le bord bas.
+     // Une ligne horizontale de texture est donc toujours parallèle à a-b.
+     const xx=(b.x-a.x)/w,xy=(b.y-a.y)/w,yx=(mid.x-center.x)/h,yy=(mid.y-center.y)/h;
+     ctx.save();poly([center,a,b]);ctx.clip();
+     ctx.transform(xx,xy,yx,yy,center.x-xx*w/2,center.y-xy*w/2);
+     ctx.filter='saturate(.8) brightness(.90)';ctx.drawImage(image,0,0);ctx.restore();
+    }
+   }else if(ready){
     const Q=(x,h)=>{const z=M.SEAT+h*M.RISE,l=(x-face.offset)/face.sign;return face.axis===0?P((z-f.c-f.zv*l)/f.zu,l,z):P(l,(z-f.c-f.zu*l)/f.zv,z);};
     const coords=face.points.map(q=>uv(face,q)),xmin=Math.min(...coords.map(q=>q.x)),xmax=Math.max(...coords.map(q=>q.x)),hmin=Math.min(...coords.map(q=>q.h)),hmax=Math.max(...coords.map(q=>q.h)),w=image.naturalWidth,h=image.naturalHeight;
     // Répétition réfléchie : aucun saut entre les deux bords d'une image non bouclable.

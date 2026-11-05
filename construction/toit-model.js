@@ -1,13 +1,14 @@
+/* Faîte plat V5 adopté le 3 novembre 2026 ; raccordé en alpha 3 locale. */
 /* J4 V7 — pièces indépendantes, faîtage et noue. Une case = un module de mur en largeur. */
 (function(root,factory){'use strict';const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.RoofModules=Object.freeze(api);})(typeof globalThis!=='undefined'?globalThis:this,function(){
  'use strict';
  const UNIT=1,SEAT=122,RISE=64,EPS=1e-8;
  const turn=(x,y,r)=>[[x,y],[1-y,x],[1-x,1-y],[y,1-x]][((r%4)+4)%4];
  const inverse=(x,y,r)=>turn(x,y,4-r);
- const shape=(kind,x,y)=>kind==='angle'?Math.min(x,y):kind==='valley'?Math.max(x,y):kind==='ridge'?Math.min(y,1-y):y;
+ const shape=(kind,x,y)=>kind==='flat'?Math.min(x,y,1-x,1-y,.25):kind==='angle'?Math.min(x,y):kind==='valley'?Math.max(x,y):kind==='ridge'?Math.min(y,1-y):y;
  const height=(p,u,v)=>{const [x,y]=inverse(u-p.u,v-p.v,p.rot);return p.base+RISE*shape(p.kind,x,y);};
  function mesh(p){
-  const local=p.kind==='angle'?[[[0,0,0],[1,0,0],[1,1,1]],[[0,0,0],[1,1,1],[0,1,0]]]:p.kind==='valley'?[[[0,0,0],[1,0,1],[1,1,1]],[[0,0,0],[1,1,1],[0,1,1]]]:p.kind==='ridge'?[[[0,0,0],[1,0,0],[1,.5,.5],[0,.5,.5]],[[0,.5,.5],[1,.5,.5],[1,1,0],[0,1,0]]]:[[[0,0,0],[1,0,0],[1,1,1],[0,1,1]]];
+  const local=p.kind==='flat'?[[[0,0,0],[1,0,0],[.75,.25,.25],[.25,.25,.25]],[[1,0,0],[1,1,0],[.75,.75,.25],[.75,.25,.25]],[[1,1,0],[0,1,0],[.25,.75,.25],[.75,.75,.25]],[[0,1,0],[0,0,0],[.25,.25,.25],[.25,.75,.25]],[[.25,.25,.25],[.75,.25,.25],[.75,.75,.25],[.25,.75,.25]]]:p.kind==='angle'?[[[0,0,0],[1,0,0],[1,1,1]],[[0,0,0],[1,1,1],[0,1,0]]]:p.kind==='valley'?[[[0,0,0],[1,0,1],[1,1,1]],[[0,0,0],[1,1,1],[0,1,1]]]:p.kind==='ridge'?[[[0,0,0],[1,0,0],[1,.5,.5],[0,.5,.5]],[[0,.5,.5],[1,.5,.5],[1,1,0],[0,1,0]]]:[[[0,0,0],[1,0,0],[1,1,1],[0,1,1]]];
   return local.map(face=>{const points=face.map(([x,y,z])=>{const q=turn(x,y,p.rot);return {u:p.u+q[0],v:p.v+q[1],z:p.base+z*RISE};});
    const a=points[0],b=points[1],c=points[2],du=b.u-a.u,dv=b.v-a.v,eu=c.u-a.u,ev=c.v-a.v,det=du*ev-dv*eu,zu=((b.z-a.z)*ev-(c.z-a.z)*dv)/det,zv=(du*(c.z-a.z)-eu*(b.z-a.z))/det;
    return {points,plane:{zu,zv,c:a.z-zu*a.u-zv*a.v}};
@@ -18,7 +19,7 @@
  const shared=(p,q)=>Math.abs(p.u-q.u)+Math.abs(p.v-q.v)===1;
  function sharedEdge(p,q){if(!shared(p,q))return null;const side=q.v<p.v?0:q.u>p.u?1:q.v>p.v?2:3,[a,b]=ends(p)[side];return [a,...[.25,.5,.75].map(t=>{const u=a.u+(b.u-a.u)*t,v=a.v+(b.v-a.v)*t;return {u,v,z:height(p,u,v)};}),b];}
  function solve(raw,pieces){
-  if(!['pan','angle','ridge','valley'].includes(raw.kind)||!Number.isSafeInteger(raw.u)||!Number.isSafeInteger(raw.v)||![0,1,2,3].includes(raw.rot))return {valid:false,reason:'Pièce ou coordonnées invalides.'};
+  if(!['pan','angle','ridge','valley','flat'].includes(raw.kind)||!Number.isSafeInteger(raw.u)||!Number.isSafeInteger(raw.v)||![0,1,2,3].includes(raw.rot))return {valid:false,reason:'Pièce ou coordonnées invalides.'};
   const p={...raw,base:SEAT},others=pieces.filter(q=>!cell(q,p.u,p.v)),neighbours=others.filter(q=>shared(p,q));let base=null;
   for(const q of neighbours){const edge=sharedEdge(p,q),values=edge.map(a=>height(q,a.u,a.v)-(height(p,a.u,a.v)-SEAT));
    if(values.some(v=>Math.abs(v-values[0])>EPS))return {valid:false,p:{...p,base:base??values[0]},reason:'Les profils ne se rejoignent pas. Tourne la pièce.'};

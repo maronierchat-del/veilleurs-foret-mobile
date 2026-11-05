@@ -23,7 +23,7 @@
   const c=project(a[0],a[1]),d=project(a[0]+n.u,a[1]+n.v);if(d.y<c.y){n.u=-n.u;n.v=-n.v;}
   const world=(t,z,side=1)=>({u:a[0]+du*t+frame.offset.u+n.u*side,v:a[1]+dv*t+frame.offset.v+n.v*side,z});
   const point=(t,z,side=1)=>{const q=world(t,z,side);return project(q.u,q.v,q.z);};
-  const opening=p.key==='fenetre'?{left:.17,right:.83,bottom:39,top:94}:p.key==='porte'?{left:.13,right:.87,bottom:0,top:101}:null;
+  const opening=p.key==='portillon'?{left:.08,right:.92,bottom:0,top:64}:p.key==='fenetre'?{left:.17,right:.83,bottom:39,top:94}:['porte','portillon'].includes(p.key)?{left:.13,right:.87,bottom:0,top:101}:null;
   const parts=opening?[[span.start,0,opening.left,height(p)],[opening.right,0,span.end,height(p)],[opening.left,opening.top,opening.right,height(p)],...(opening.bottom?[[opening.left,0,opening.right,opening.bottom]]:[])]:[[span.start,0,span.end,height(p)]];
   const i=project(a[0]+frame.inward.u,a[1]+frame.inward.v);
   return {a,b,n,world,point,opening,parts,height:height(p),span,panelHalf:PANEL_HALF,frameHalf:FRAME_HALF,frame,insideVisible:!frame.known||i.y>c.y};
@@ -69,7 +69,7 @@
     const o=m.opening;
     line([P(o.left,o.bottom),P(o.left,o.top),P(o.right,o.top),P(o.right,o.bottom)],'#65553e',.75);
     if(o.bottom)line([P(o.left,o.bottom),P(o.right,o.bottom)],'#65553e',.75);
-    if(p.key==='porte'&&!p.open)rect(o.left+.025,2,o.right-.025,o.top-2,'#796b51','#65553e');
+    if(['porte','portillon'].includes(p.key)&&!p.open)rect(o.left+.025,2,o.right-.025,o.top-2,'#796b51','#65553e');
    }
    if(posts)for(const q of [m.a,m.b]){
     const node=nodes?.get(q.join(','));if(node&&node.owner!==p.id)continue;
@@ -112,7 +112,7 @@
      if(horizontal){const a=l+(r-l)*f,b=Math.min(r,a+(r-l)*(.2+rand(g,seed)*.6)),h=z0+(z1-z0)*rand(seed,g+40);line([P(a,h),P(a+(b-a)*.4,h+.6),P(b,h-.4)],ink,g%4?.7:.5);}
      else line([P(t,Math.max(z0,z-length)),P(t-.004,z-length*.7),P(t+.005,z-length*.37),P(t-.002,z)],ink,g%4?.75:.5);
     }
-    if(p.key!=='porte'&&!horizontal&&z1-z0>70&&r-l>.07&&rand(seed,s+92)>.68){
+    if(!['porte','portillon'].includes(p.key)&&!horizontal&&z1-z0>70&&r-l>.07&&rand(seed,s+92)>.68){
      const t=l+(r-l)*(.3+rand(seed,s+70)*.4),z=z0+(z1-z0)*(.3+rand(seed,s+80)*.4);
      for(let k=1;k<=3;k++){const ring=[];for(let j=0;j<=20;j++){const a=j*Math.PI/10;ring.push(P(t+Math.cos(a)*.008*k,z+Math.sin(a)*1.7*k+.3*Math.sin(a*3)));}line(ring,'#302117b0',.7);}
      line([P(t,z+6),P(t-.006,z+12),P(t-.002,Math.min(z1,z+22))],'#271c16',.8);
@@ -164,11 +164,13 @@
   if(!['cloture','portillon'].includes(p.key)){
    poly([P(m.span.start,H,-1),P(m.span.end,H,-1),P(m.span.end,H),P(m.span.start,H)],'#a38459');
   }
-  if(['cloture','portillon'].includes(p.key)){
+  if(p.key==='cloture'){
    // Ajouré : aucun aplat de fond sous les traverses.
    wood(.02,18,.98,26,17,true);wood(.02,46,.98,54,18,true);
    rect(.02,18,.98,26,null);rect(.02,46,.98,54,null);
    if(p.key==='portillon')poly([P(.08,19),P(.12,17),P(.93,50),P(.88,54)],'#785638');
+  }else if(p.key==='portillon'){
+   if(!p.open){wood(.08,3,.92,62,39);rect(.08,3,.92,62,null);beam(.08,15,.92,15,9,73);beam(.08,53,.92,53,9,74);beam(.10,p.hinge==='right'?53:15,.90,p.hinge==='right'?15:53,9,71);for(const z of [15,53])rect(p.hinge==='right'?.78:.08,z-3,p.hinge==='right'?.92:.22,z+3,'#322b22');}
   }else{
    m.parts.forEach((r,i)=>wood(...r,Math.round(p.u*7+p.v*13)+i*11));
    // Ossature épaisse et jambes de force : référence de la joueuse.
@@ -183,7 +185,7 @@
     // Tableaux intérieurs visibles : l'ouverture n'est pas une image collée.
     for(const t of [o.left,o.right])poly([P(t,o.bottom,-1),P(t,o.top,-1),P(t,o.top),P(t,o.bottom)],'#4e392a');
     poly([P(o.left,o.top,-1),P(o.right,o.top,-1),P(o.right,o.top),P(o.left,o.top)],'#513b29');
-    if(p.key==='porte'&&!p.open){
+    if(['porte','portillon'].includes(p.key)&&!p.open){
      const l=o.left+.025,r=o.right-.025;
      wood(l,2,r,o.top-2,39);rect(l,2,r,o.top-2,null);
      const right=p.hinge==='right',T=t=>right?l+r-t:t;
@@ -262,7 +264,7 @@
    line([b[0],project(pu-.006,pv+.012,h+3),b[2]],'#604129',.9);
    ctx.restore();return volume;
  }
- function drawLeaf(ctx,p,project,ends,zoom,options={}){if(p.key!=='porte'||!p.open)return;const g=HouseDoor.geometry(p,{ends}),hinged=(u,v,z=0)=>{const q=g.transform(u,v,z);return project(q.u,q.v,q.z);};ctx.save();ctx.beginPath();g.corners.map(q=>project(q.u,q.v,q.z)).forEach((q,i)=>i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y));ctx.closePath();ctx.clip();draw(ctx,{...p,open:false},hinged,ends,zoom,{...options,nodes:null,posts:false});ctx.restore();}
+ function drawLeaf(ctx,p,project,ends,zoom,options={}){if(!['porte','portillon'].includes(p.key)||!p.open)return;const g=HouseDoor.geometry(p,{ends}),hinged=(u,v,z=0)=>{const q=g.transform(u,v,z);return project(q.u,q.v,q.z);};ctx.save();ctx.beginPath();g.corners.map(q=>project(q.u,q.v,q.z)).forEach((q,i)=>i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y));ctx.closePath();ctx.clip();draw(ctx,{...p,open:false},hinged,ends,zoom,{...options,nodes:null,posts:false});ctx.restore();}
  const api={height,layout,describe,junctions,beamGeometry,postGeometry,drawPost,crossesFixture,draw,drawLeaf,supports:key=>KEYS.has(key)};
  if(typeof module==='object'&&module.exports)module.exports=api;else root.InteriorWallArt=Object.freeze(api);
 })(typeof globalThis!=='undefined'?globalThis:this);

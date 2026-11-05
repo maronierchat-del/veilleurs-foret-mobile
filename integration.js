@@ -54,7 +54,7 @@ const ConstructionTrial=(()=>{
    roofs.push({id:roofs.length,kind:s.length===1?'pan':'angle',u,v,rot,base:122+64*low});
   }
   const raw=[];for(let i=0;i<4;i++)raw.push({u:i,v:0,rot:0,key:i===2?'fenetre':'mur'},{u:4,v:i,rot:3,key:i===1?'fenetre':'mur'},{u:0,v:i,rot:3,key:i===2?'fenetre':'mur'},{u:i,v:4,rot:0,key:i===0?'porte':'mur',...(i===0?{open}:{})});
-  for(const p of raw){const e=G.ends(p).map(q=>turn(q,r)),w={...p,u:Math.min(...e.map(q=>q[0])),v:Math.min(...e.map(q=>q[1])),rot:Math.abs(e[0][1]-e[1][1])<1e-8?0:3};if(w.key==='porte'){const inward=InteriorWallArt.layout(w,G.ends,floors).inward;w.outward=[-inward.u,-inward.v];}walls.push(w);}
+  for(const p of raw){const e=G.ends(p).map(q=>turn(q,r)),w={...p,u:Math.min(...e.map(q=>q[0])),v:Math.min(...e.map(q=>q[1])),rot:Math.abs(e[0][1]-e[1][1])<1e-8?0:3};if(['porte','portillon'].includes(w.key)){const inward=InteriorWallArt.layout(w,G.ends,floors).inward;w.outward=[-inward.u,-inward.v];}walls.push(w);}
   const corners=M.rect({key:'etabli',u:.5,v:.5,rot:0}).map(q=>turn(q,r));
   objects.push({key:'etabli',stage:'',u:Math.min(...corners.map(q=>q[0])),v:Math.min(...corners.map(q=>q[1])),rot:r});lastKey='';
  }
@@ -66,7 +66,7 @@ const ConstructionTrial=(()=>{
   s.constructionTrial.freeFloors=keep(s.constructionTrial.freeFloors,FloorPlacement.sanitize(s.constructionTrial.freeFloors));
   floors.splice(fixedCount);floors.push(...s.constructionTrial.freeFloors);
   shell(s.constructionTrial.rotation,s.constructionTrial.doorOpen);
-  const savedOut=s.constructionTrial.doorOutward;if(fixedCount&&Array.isArray(savedOut)&&savedOut.length===2&&savedOut.every(Number.isFinite)&&Math.abs(savedOut[0])+Math.abs(savedOut[1])===1)walls.find(w=>w.key==='porte').outward=[...savedOut];
+  const savedOut=s.constructionTrial.doorOutward;if(fixedCount&&Array.isArray(savedOut)&&savedOut.length===2&&savedOut.every(Number.isFinite)&&Math.abs(savedOut[0])+Math.abs(savedOut[1])===1)walls.find(w=>['porte','portillon'].includes(w.key)).outward=[...savedOut];
   s.constructionTrial.freeWalls=keep(s.constructionTrial.freeWalls,WallPlacement.sanitize(s.constructionTrial.freeWalls,s.constructionTrial.freeFloors,walls));
   walls.push(...s.constructionTrial.freeWalls);renderWalls=walls;
   s.constructionTrial.freeRoofs=keep(s.constructionTrial.freeRoofs,RoofPlacement.sanitize(s.constructionTrial.freeRoofs,roofs));roofs.push(...s.constructionTrial.freeRoofs);renderRoofs=roofs;
@@ -79,7 +79,7 @@ const ConstructionTrial=(()=>{
  }
  function returnToDoor(){MapControls.center();const p=toWorld(...turn([.5,4.65],rotation));Object.assign(state.player,p);ui.auto=null;ui.keys.clear();ui.touch.clear();ui.camera.x=p.x;ui.camera.y=p.y-120/(ui.camera.zoom*.7);lastKey='';saveSoon();}
  const originalNewState=newState;
- newState=function(){const s=fixture(originalNewState());if(fixedCount)Object.assign(s.player,new URLSearchParams(location.search).has('maison-test')?toWorld(1.6,2.8):toWorld(.5,4.65));return s;};
+ newState=function(){const s=fixture(originalNewState());ConstructionBlocks.migrate(s);FenceData.migrate(s);TableConstruction.migrate(s);if(fixedCount)Object.assign(s.player,new URLSearchParams(location.search).has('maison-test')?toWorld(1.6,2.8):toWorld(.5,4.65));return s;};
  SaveContinuity.install({prepare(s){
   spaceWildResources(s);migrateSave(s);
   // Refuser une pièce perdue par normalisation plutôt que réenregistrer une scène amputée.
@@ -92,38 +92,43 @@ const ConstructionTrial=(()=>{
  loadSave=function(){return fixture(safeLoad());};
  const originalPickup=pickup;
  pickup=function(o){if(!o||!state.objects.includes(o))return;if(o.trialFixture){toast('La maison et son établi sont fixes pour ce premier essai.');return;}const result=originalPickup(o);if(!state.objects.includes(o)&&ui.stationId===o.id){ui.stationId=null;closePanel();}return result;};
- placeStart=function(key){if(CultivationPlacement.supports(key)){CultivationPlacement.start(key);return;}if(['arbuste','feu','marmite'].includes(key)){BushTransplant.start(key);return;}if(key==='sol'){FloorPlacement.start();return;}if(['mur','fenetre','porte'].includes(key)){WallPlacement.start('add',key);return;}if(key==='toit'){if(!amount('toit'))return toast('Fabrique des éléments de toiture à l’établi.');RoofPlacement.start();return;}toast('Construction libre prévue au prochain jalon. La maison est déjà posée pour cet essai.');};
- const stockPieces=['sol','mur','fenetre','porte'];
+ placeStart=function(key){if(CultivationPlacement.supports(key)){CultivationPlacement.start(key);return;}if(['arbuste','feu','marmite'].includes(key)){BushTransplant.start(key);return;}if(key==='sol'){FloorPlacement.start();return;}if(['mur','fenetre','porte','cloture','portillon'].includes(key)){WallPlacement.start('add',key);return;}if(key==='toit'){if(!ConstructionBlocks.available('pan'))return toast('Fabrique des blocs de toit à l’établi.');RoofPlacement.start();return;}toast('Construction libre prévue au prochain jalon. La maison est déjà posée pour cet essai.');};
+ const stockPieces=['bloc_bois','bloc_toit'];
  for(const key of [...stockPieces,'pepiniere','potager','champignonniere'])CRAFT[key].bench=true;
  const originalCraft=craft;
- craft=function(key){if(['feu','etabli'].includes(key)&&!hasTool('marteau')){toast('Équipe le marteau pour cette fabrication.');return;}if([...stockPieces,'toit','feu','marmite'].includes(key)||CultivationPlacement.supports(key)){originalCraft(key);return;}if(CRAFT[key]?.kind!=='outil'){toast('Fabrication des installations et constructions raccordée au prochain jalon.');return;}const before=amount(key);originalCraft(key);if(amount(key)>before&&key!=='sac'){if(!state.quickTools.includes(key))state.quickTools.push(key);commit();toast('Outil fabriqué et équipé.');}};
+ craft=function(key){if(['feu','etabli'].includes(key)&&!hasTool('marteau')){toast('Équipe le marteau pour cette fabrication.');return;}if([...stockPieces,'feu','marmite'].includes(key)||CultivationPlacement.supports(key)){originalCraft(key);return;}if(CRAFT[key]?.kind!=='outil'){toast('Fabrication des installations et constructions raccordée au prochain jalon.');return;}const before=amount(key);originalCraft(key);if(amount(key)>before&&key!=='sac'){if(!state.quickTools.includes(key))state.quickTools.push(key);commit();toast('Outil fabriqué et équipé.');}};
  const originalCanCraft=canCraft;
- canCraft=function(key){return (!['feu','etabli'].includes(key)||hasTool('marteau'))&&([...stockPieces,'toit','feu','marmite'].includes(key)||CultivationPlacement.supports(key)||CRAFT[key]?.kind==='outil')&&originalCanCraft(key);};
+ canCraft=function(key){return (!['feu','etabli'].includes(key)||hasTool('marteau'))&&([...stockPieces,'feu','marmite'].includes(key)||CultivationPlacement.supports(key)||CRAFT[key]?.kind==='outil')&&originalCanCraft(key);};
  const originalProtectedSpot=protectedSpot;
  protectedSpot=function(x,y){if(originalProtectedSpot(x,y))return true;if(!openWorld)return false;const q=toGrid(x,y);if([...floors,...roofs].some(p=>q.u>=p.u&&q.u<=p.u+1&&q.v>=p.v&&q.v<=p.v+1))return true;return walls.some(w=>{const [a,b]=G.ends(w),p=toWorld((a[0]+b[0])/2,(a[1]+b[1])/2);return Math.hypot(x-p.x,y-p.y)<192;});};
- const originalWalk=canWalk;let searchBlocked=null;
- canWalk=function(x,y){const q=toGrid(x,y);return !BushTransplant.blocked(q)&&!(searchBlocked?searchBlocked([q.u,q.v]):M.blocked([q.u,q.v],modelObjects(),walls,DoorGeometry,G))&&originalWalk(x,y);};
- const search=ObstacleNavigation.create((x,y)=>canWalk(x,y),WORLD);
- function closedBoundary(from,to){const a=toGrid(from.x,from.y),b=toGrid(to.x,to.y),inside=q=>q.u>=0&&q.u<4&&q.v>=0&&q.v<4;return fixedCount&&inside(a)!==inside(b)&&!walls.find(w=>w.key==='porte').open;}
- const navigation={clear:search.clear,plan(from,to,radius=0){return closedBoundary(from,to)?null:search.plan(from,to,radius);},begin(from,to,radius=0){if(closedBoundary(from,to))return {step:()=>({done:true,route:null})};const job=search.begin(from,to,radius);return {step(budget=3){searchBlocked=M.blockedChecker(modelObjects(),walls,DoorGeometry,G);try{return job.step(budget);}finally{searchBlocked=null;}}};}};
+ const originalWalk=canWalk;let searchWalk=null;
+ canWalk=function(x,y){if(searchWalk)return searchWalk(x,y);const q=toGrid(x,y);return !BushTransplant.blocked(q)&&!M.blocked([q.u,q.v],modelObjects(),walls,DoorGeometry,G)&&originalWalk(x,y);};
+ function withWalkChecker(action){
+  const previous=searchWalk,nature=createWorldWalkChecker(),fixtures=BushTransplant.blockedChecker(),built=M.blockedChecker(modelObjects(),walls,DoorGeometry,G);
+  searchWalk=(x,y)=>{if(!nature(x,y))return false;const q=toGrid(x,y);return !fixtures(q)&&!built([q.u,q.v]);};
+  try{return action();}finally{searchWalk=previous;}
+ }
+ const search=ObstacleNavigation.create((x,y)=>canWalk(x,y),WORLD,14,{shortcuts:true,detours:true});
+ function closedBoundary(from,to){const a=toGrid(from.x,from.y),b=toGrid(to.x,to.y),inside=q=>q.u>=0&&q.u<4&&q.v>=0&&q.v<4;return fixedCount&&inside(a)!==inside(b)&&!walls.find(w=>['porte','portillon'].includes(w.key)).open;}
+ const navigation={clear:(from,to)=>withWalkChecker(()=>search.clear(from,to)),plan(from,to,radius=0){return closedBoundary(from,to)?null:withWalkChecker(()=>search.plan(from,to,radius));},begin(from,to,radius=0){if(closedBoundary(from,to))return {step:()=>({done:true,route:null})};const job=search.begin(from,to,radius);return {step(budget=3){return withWalkChecker(()=>job.step(budget));}};}};
  // Les fenêtres et murs transparents restent physiques ; le banc est déjà testé par M.
  SIZES.person=SIZES.right=SIZES.left=SIZES.back=110;
  function interior(){const q=toGrid(state.player.x,state.player.y);return !!fixedCount&&q.u>=0&&q.u<4&&q.v>=0&&q.v<4;}
  function hiddenWalls(){const main=interior()?renderWalls.slice(0,BuildingArea.fixedCount).filter(w=>w.rot%2?Math.abs(w.u)<1e-8:Math.abs(w.v-4)<1e-8):[];return [...main,...WallPlacement.hidden(toGrid(state.player.x,state.player.y),renderWalls)];}
- function toggleDoor(p=walls.find(w=>w.key==='porte')){if(!walls.includes(p)||p.key!=='porte')return false;const q=toGrid(state.player.x,state.player.y),next={...p,open:!p.open,...(!p.open?{outward:HouseDoor.awayFrom(p,q,G)}:{})};
+ function toggleDoor(p=walls.find(w=>['porte','portillon'].includes(w.key))){if(!walls.includes(p)||!['porte','portillon'].includes(p.key))return false;const q=toGrid(state.player.x,state.player.y),next={...p,open:!p.open,...(!p.open?{outward:HouseDoor.awayFrom(p,q,G)}:{})};
   const touches=(point,poly,radius=.1)=>M.contains([point.u,point.v],poly)||poly.some((a,i)=>{const b=poly[(i+1)%poly.length];return G.segmentDistance({x:point.u,y:point.v},{x:a[0],y:a[1]},{x:b[0],y:b[1]})<radius;});
   // Tester tout le balayage, pas seulement la position finale du battant.
   let blocked=M.blocked([q.u,q.v],[],[next],DoorGeometry,G);
   for(let i=0;i<=20&&!blocked;i++){const leaf=HouseDoor.geometry({...next,open:true},G,i/20).polygon;
-   blocked=touches(q,leaf)||modelObjects().some(o=>CultivationPlacement.clearance(o).some(poly=>M.overlap(poly,leaf)))||walls.some(w=>w!==p&&(M.overlap(leaf,M.wallPoly(w,G))||w.key==='porte'&&w.open&&M.overlap(leaf,HouseDoor.geometry(w,G).polygon)));
+   blocked=touches(q,leaf)||modelObjects().some(o=>CultivationPlacement.clearance(o).some(poly=>M.overlap(poly,leaf)))||walls.some(w=>w!==p&&(M.overlap(leaf,M.wallPoly(w,G))||['porte','portillon'].includes(w.key)&&w.open&&M.overlap(leaf,HouseDoor.geometry(w,G).polygon)));
    if(!blocked)blocked=state.objects.some(o=>{if(o.trialFixture||CultivationPlacement.isFixture(o)||MalleTrial.isFixture(o))return false;if(BushTransplant.isFixture(o))return M.overlap(leaf,BushTransplant.footprint(o));const poly=leaf.map(([u,v])=>{const a=toWorld(u,v);return [a.x,a.y];}),radius=o.type==='tree'?47:o.type==='rock'?42:o.type==='bush'?36:35;return touches({u:o.x,v:o.y},poly,radius);});
   }
-  if(blocked){toast('La porte est bloquée par le personnage ou un obstacle.');return false;}
+  if(blocked){toast((p.key==='portillon'?'Le portillon':'La porte')+' est bloqué par le personnage ou un obstacle.');return false;}
   p.open=next.open;p.outward=next.outward;if(walls.indexOf(p)<BuildingArea.fixedCount){state.constructionTrial.doorOpen=p.open;state.constructionTrial.doorOutward=[...p.outward];}ui.auto=null;lastKey='';saveSoon();return true;
  }
  const screenCamera=()=>{const p=project(origin.x,origin.y);return {x:p.x,y:p.y,zoom:ui.camera.zoom};};
  function doorAt(x,y){
-  if(!ready)return false;if(sceneKey()!==lastSceneKey)render();for(const p of walls.filter(w=>w.key==='porte')){const c=screenCamera(),pr=(u,v,z=0)=>G.project(u,v,c,z),m=InteriorWallArt.describe(p,G.ends,pr,floors),o=m.opening;
+  if(!ready)return false;if(sceneKey()!==lastSceneKey)render();for(const p of walls.filter(w=>['porte','portillon'].includes(w.key))){const c=screenCamera(),pr=(u,v,z=0)=>G.project(u,v,c,z),m=InteriorWallArt.describe(p,G.ends,pr,floors),o=m.opening;
   const index=walls.indexOf(p),targets=p.open?[{points:HouseDoor.geometry(p,G).corners.map(q=>pr(q.u,q.v,q.z)),owner:(openWorld?5000:300)+index},{points:[m.point(o.left-.055,0),m.point(o.right+.055,0),m.point(o.right+.055,o.top+6),m.point(o.left-.055,o.top+6)],owner:(openWorld?1000:10)+index}]:[{points:[m.point(o.left+.025,2),m.point(o.right-.025,2),m.point(o.right-.025,o.top-2),m.point(o.left+.025,o.top-2)],owner:(openWorld?1000:10)+index}];
   const q=G.unproject(x,y,c),pt=G.project(q.u,q.v,camera),px0=Math.floor(pt.x),py0=Math.floor(pt.y),sample=openWorld&&tiles.sample(pt.x-camera.x,pt.y-camera.y),px=sample?sample.x:px0,py=sample?sample.y:py0,d=openWorld?sample?.tile.last:occlusion.last;
   for(const target of targets){if(!M.contains([x,y],target.points.map(p=>[p.x,p.y])))continue;const layer=d?.layers.find(l=>l.owner===target.owner);
@@ -239,7 +244,7 @@ const ConstructionTrial=(()=>{
   KitchenUI.init();
   CultivationUI.init();
   BushTransplant.init(ConstructionTrial);
-  CultivationPlacement.init(ConstructionTrial);MalleTrial.init(ConstructionTrial);PortalConstruction.init(ConstructionTrial);PaillasseConstruction.init(ConstructionTrial);
+  CultivationPlacement.init(ConstructionTrial);MalleTrial.init(ConstructionTrial);PortalConstruction.init(ConstructionTrial);PaillasseConstruction.init(ConstructionTrial);TableConstruction.init(ConstructionTrial);
   EdgeMarkers.init(ConstructionTrial);
   ToolRecovery.init();
   InventoryUI.init();
@@ -250,7 +255,7 @@ const ConstructionTrial=(()=>{
   canvas.addEventListener('pointerup',e=>{if(!start)return;const q=start;start=null;e.stopImmediatePropagation();if(Math.hypot(e.clientX-q.x,e.clientY-q.y)<8){ui.auto=null;toggleDoor(q.door);}},true);
   canvas.addEventListener('pointercancel',()=>{start=null;},true);
   $('trialReturn').onclick=returnToDoor;
-  $('trialTurn').onclick=()=>{FloorPlacement.stop();WallPlacement.stop();RoofPlacement.stop();if(state.constructionTrial.doorOutward){const [u,v]=state.constructionTrial.doorOutward;state.constructionTrial.doorOutward=[-v,u];}shell((rotation+1)%4,walls.find(w=>w.key==='porte').open);state.constructionTrial.rotation=rotation;fixture(state);refreshFloors();returnToDoor();toast('Maison tournée : '+rotation*90+'°.');};
+  $('trialTurn').onclick=()=>{FloorPlacement.stop();WallPlacement.stop();RoofPlacement.stop();if(state.constructionTrial.doorOutward){const [u,v]=state.constructionTrial.doorOutward;state.constructionTrial.doorOutward=[-v,u];}shell((rotation+1)%4,walls.find(w=>['porte','portillon'].includes(w.key)).open);state.constructionTrial.rotation=rotation;fixture(state);refreshFloors();returnToDoor();toast('Maison tournée : '+rotation*90+'°.');};
  };
  const originalAssets=loadAssets;
  loadAssets=async function(){await originalAssets();BushTransplant.load();const sources={wood:'construction/bois-encre-v1.png',pan:'construction/pan-encre-v1.png'};
@@ -260,7 +265,7 @@ const ConstructionTrial=(()=>{
   walkLeft=document.createElement('canvas');walkLeft.width=IMAGES.walk1.width;walkLeft.height=IMAGES.walk1.height;const flip=walkLeft.getContext('2d');flip.translate(walkLeft.width,0);flip.scale(-1,1);flip.drawImage(IMAGES.walk1,0,0);
   for(const image of [IMAGES.right,IMAGES.left,IMAGES.back,IMAGES.walk1,walkLeft]){const measure=document.createElement('canvas');measure.width=image.width;measure.height=image.height;const mc=measure.getContext('2d');mc.drawImage(image,0,0);const pixels=mc.getImageData(0,0,measure.width,measure.height).data;let top=image.height,bottom=0;for(let y=0;y<image.height;y++)for(let x=0;x<image.width;x++)if(pixels[(y*image.width+x)*4+3]>20){top=Math.min(top,y);bottom=Math.max(bottom,y+1);}heroMetrics.set(image,{height:bottom-top,bottom});}
   Object.assign(images,await CultivationPlacement.load(),await MalleTrial.load());refreshFloors();
-  images.hero=IMAGES.person;const depths=await MeshOcclusion.unpack();Object.assign(depths,await MalleTrial.loadDepths(),await PortalConstruction.loadDepths(),await PaillasseConstruction.loadDepths());occlusion=MeshOcclusion.create(context,G,M,depths);if(openWorld)tiles=ConstructionTiles.create({G,M,images,depths,getCalculations:()=>calculations});
+  images.hero=IMAGES.person;const depths=await MeshOcclusion.unpack();Object.assign(depths,await MalleTrial.loadDepths(),await PortalConstruction.loadDepths(),await PaillasseConstruction.loadDepths(),await TableConstruction.loadDepths());occlusion=MeshOcclusion.create(context,G,M,depths);if(openWorld)tiles=ConstructionTiles.create({G,M,images,depths,getCalculations:()=>calculations});
   initializeSceneGraphics=async()=>{if(!openWorld)return false;calculations=await SceneCalculations.create({images:{...IMAGES,...images},depths,specs:M.specs,constants:DepthAtlas.constants,patches,world:WORLD,tools:BuildingArea.tools,invalidate(){lastSceneKey='';}});return !!calculations;};
   ui.camera.zoom=W<650?.5:1;$('zoomValue').textContent=Math.round(ui.camera.zoom*100)+' %';ui.camera.y-=120/(ui.camera.zoom*.7);ready=true;
  };

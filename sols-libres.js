@@ -13,8 +13,8 @@ const FloorPlacement=(()=>{
   if(found)return {valid:false,reason:'Cette case possède déjà un sol.'};
   // Vérifier aussi les emprises des ressources du jeu, sans les déplacer.
   for(const o of state.objects){if(o.trialFixture||BushTransplant.isFixture(o)||CultivationPlacement.isFixture(o)||MalleTrial.isFixture(o))continue;const q=api.toGrid(o.x,o.y);if(q.u>p.u-.25&&q.u<p.u+1.25&&q.v>p.v-.25&&q.v<p.v+1.25)return {valid:false,reason:'Un objet ou une ressource occupe cette case.'};}
-  if(!amount('sol'))return {valid:false,reason:'Aucun sol disponible : fabrique un lot à l’établi.'};
-  return {valid:true,reason:'Emplacement libre · 1 sol par case.'};
+  if(!ConstructionBlocks.available('sol'))return {valid:false,reason:'Il faut 1 bloc de bois : fabrique un lot à l’établi.'};
+  return {valid:true,reason:'Emplacement libre · 1 bloc de bois par case.'};
  }
  function preview(p){hover=p;const result=evaluate(p),key=JSON.stringify([mode,p?.u,p?.v,result.valid]);$('floorStatus').textContent=result.reason;
   if(key===previewKey)return result;previewKey=key;let floors=api.floors;
@@ -22,7 +22,7 @@ const FloorPlacement=(()=>{
   api.refreshFloors(floors);return result;
  }
  function apply(p,action=mode){const result=evaluate(p,action);if(!result.valid){toast(result.reason);return false;}const list=state.constructionTrial.freeFloors;
-  if(action==='add'){give('sol',-1);list.push(...sanitize([p]));}else{list.splice(list.findIndex(q=>same(p,q)),1);give('sol',1);}updateHUD();
+  if(action==='add'){ConstructionBlocks.change('sol',-1);list.push(...sanitize([p]));}else{list.splice(list.findIndex(q=>same(p,q)),1);ConstructionBlocks.change('sol',1);}updateHUD();
   api.floors.splice(BuildingArea.fixedCount);api.floors.push(...list);previewKey='';hover=null;api.refreshFloors();saveNow();$('floorStatus').textContent=action==='add'?'Sol posé. Choisis une autre case.':'Sol retiré.';return true;
  }
  function stop(){mode=null;hover=null;gesture=null;previewKey='';if(api)api.refreshFloors();$('floorControls').hidden=true;}

@@ -63,14 +63,14 @@ const GameInterface=(()=>{
     document.querySelector('.eyebrow').textContent='ÉTABLI';
     $('panelTitle').innerHTML='Fabrication · <span class="workbench-energy" aria-label="4 points d’énergie">4 <svg class="energy-symbol" aria-hidden="true"><use href="#energy-bolt" /></svg></span>';
     const groups={outil:'Outils',installation:'Production',construction:'Construction',meuble:'Mobilier'};
-    const catalogue={outil:['hache','pioche','marteau','pelle'],installation:['feu','etabli','marmite','potager','pepiniere','champignonniere'],construction:['sol','mur','porte','fenetre','toit'],meuble:['malle','paillasse','portail']};
+    const catalogue={outil:['hache','pioche','marteau','pelle'],installation:['feu','etabli','marmite','potager','pepiniere','champignonniere'],construction:['bloc_bois','bloc_toit'],meuble:['malle','paillasse','table','portail']};
     if(!Object.hasOwn(groups,ui.craftFilter))ui.craftFilter='outil';
-    const plurals={sol:'sols en bois',mur:'murs en bois',porte:'portes en bois',fenetre:'fenêtres',toit:'toitures en chaume'};
+    const plurals={bloc_bois:'blocs de bois',bloc_toit:'blocs de toit',sol:'sols en bois',mur:'murs en bois',porte:'portes en bois',fenetre:'fenêtres',toit:'toitures en chaume'};
     let html='<div class="craft-filters">'+Object.entries(groups).map(([key,name])=>'<button type="button" data-action="craft-filter" data-key="'+key+'" class="'+(ui.craftFilter===key?'current':'')+'">'+name+'</button>').join('')+'</div>';
     for(const key of catalogue[ui.craftFilter]){
      const r=CRAFT[key];if(!r)continue;
      const name=key==='coffre'?'Malle d’expédition':key==='paillasse'?'Lit (paillasse)':r.qty?r.qty+' '+(plurals[key]||r.name):r.name;
-     html+='<div class="item-row" data-workbench-item="'+key+'">'+rowImage(r.spr)+'<div class="item-info"><strong>'+name+'</strong><small>'+fmtMaterials(r.materials)+(key==='toit'?'<br>Forme choisie à la pose':'')+'</small></div><button type="button" data-action="craft" data-key="'+key+'" '+(!canCraft(key)?'disabled':'')+'>Fabriquer</button></div>';
+     html+='<div class="item-row" data-workbench-item="'+key+'">'+rowImage(r.spr)+'<div class="item-info"><strong>'+name+'</strong><small>'+fmtMaterials(r.materials)+'</small></div><button type="button" data-action="craft" data-key="'+key+'" '+(!canCraft(key)?'disabled':'')+'>Fabriquer</button></div>';
     }
     $('panelBody').innerHTML=html;return;
    }
